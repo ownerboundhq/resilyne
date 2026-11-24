@@ -1,0 +1,11 @@
+# Release gates
+- [ ] Exact commit passes CI unit and disposable database tests.
+- [ ] Cloud secrets, resources, migration and restore verified.
+- [ ] OAuth, installation removal/suspension, webhook replay and cross-account denial verified live.
+- [ ] Disposable repository controlled CI failure produces an incident and safe proposal.
+- [ ] Draft PR, selected CI workflow and exact-head verification tested; reject failed or stale checks.
+- [ ] Approved merge, deployment observation, health probe and reverse patch tested.
+- [ ] Stripe test checkout, cancellation, duplicate and out-of-order webhook reconciliation tested.
+- [ ] Worker restart mid-job, deduplication and ambiguous write recovery tested.
+- [ ] Security review, retention, encryption, quotas, monitoring and support ready.
+- [ ] Only then: public beta and live payments.

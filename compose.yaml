@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: resilyne
+      POSTGRES_USER: resilyne
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resilyne -d resilyne"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  migrate:
+    build: .
+    env_file: .env
+    command: ["npm", "run", "migrate"]
+    depends_on:
+      db:
+        condition: service_healthy
+  web:
+    build: .
+    env_file: .env
+    environment:
+      BIND_HOST: 0.0.0.0
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+  worker:
+    build: .
+    env_file: .env
+    command: ["npm", "run", "worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+volumes:
+  postgres_data:
