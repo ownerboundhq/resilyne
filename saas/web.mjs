@@ -6,6 +6,7 @@ import {poolFor,one,tx,enqueue,audit,dailyRepair} from './db.mjs';
 import {oauthUser,verifyInstallation,appJWT,apiRequest,installationToken,connectRepo,projectGitHub} from './github.mjs';
 import {stripeFor,checkout,reconcileBilling} from './billing.mjs';
 import {sourcePath} from '../lib/core.mjs';
+import {mountConnect,mountConnectDashboard} from './connect.mjs';
 const cfg=config(),pool=poolFor(cfg),stripe=stripeFor(cfg),app=express();
 app.disable('x-powered-by');
 app.use((req,res,next)=>{
@@ -51,6 +52,7 @@ app.post('/webhooks/stripe',express.raw({type:'application/json',limit:'256kb'})
 });
 app.use(rate);
 app.use(express.json({limit:'16kb'}));
+mountConnect(app,pool,cfg);
 app.get('/auth/login',(req,res)=>{
  const state=nonce();res.cookie('resilyne_oauth',state,{...cookieOptions,maxAge:600000});
  const q=new URLSearchParams({client_id:cfg.clientId,redirect_uri:cfg.origin+'/auth/callback',state});
@@ -177,6 +179,7 @@ app.post('/api/projects/:id/proposals/:proposal/action',owned,entitled,async(req
    await audit(c,req.account.id,req.project.id,'proposal_'+action,{proposal});
  });res.json({ok:true});
 });
+mountConnectDashboard(app,pool,owned);
 app.use(express.static(fileURLToPath(new URL('./public/',import.meta.url)),{index:'index.html',dotfiles:'deny'}));
 app.use((req,res)=>res.status(404).json({error:'Not found'}));
 app.use((err,req,res,next)=>{

@@ -73,6 +73,25 @@ async function detail(){
    if(row.status==='merged')c.append(action('Prepare revert','rollback','Prepare a reverse patch for review? It will not change production yet.'));
    item.append(c);repairs.append(item);
  }root.append(repairs);
+ const connect=panel('Resilyne Connect · Scan, Pulse & Meter');
+ connect.append(el('p','Connect coding agents through project-scoped MCP credentials, or send bounded server-side telemetry. Credentials expire after 30 days.'));
+ const integration=await api(base+'connect');
+ const report=integration.report;
+ connect.append(btn('Generate readiness report',async()=>{const result=await api(base+'readiness',{});notice(result.queued?'Readiness scan queued. Refresh after worker completes.':'A scan was already requested this hour.');},true));
+ if(report){connect.append(el('p','Readiness report · '+date(report.generatedAt)));for(const check of report.checks){const x=el('div','','line');x.append(badge(check.state),el('h3',check.title),el('p',check.detail));connect.append(x);}}
+ else connect.append(el('p','No readiness report yet.'));
+ const tokenActions=el('div','','actions');
+ for(const scope of ['agent','telemetry'])tokenActions.append(btn('Create '+scope+' credential',async()=>{
+   const label=prompt('Credential label',scope==='agent'?'Coding agent':'Runtime SDK');if(!label)return;
+   const r=await api(base+'connect/token',{label,scope});
+   const box=el('div','','line'),secret=el('input');secret.value=r.token;secret.readOnly=true;secret.setAttribute('aria-label','One-time credential');box.append(el('p','Copy now. This credential will not be shown again.'),secret,btn('Copy credential',async()=>{await navigator.clipboard.writeText(secret.value);notice('Credential copied. Store privately.');}));connect.prepend(box);
+ }));
+ connect.append(tokenActions);
+ for(const t of integration.tokens){const x=el('div','','line');x.append(el('h3',t.label+' · '+t.scope),el('small',t.revoked_at?'Revoked':('Expires '+date(t.expires_at))));if(!t.revoked_at&&new Date(t.expires_at)>new Date())x.append(btn('Revoke',async()=>{if(confirm('Revoke this credential?')){await api(base+'connect/revoke',{tokenId:t.id});await detail();}}));connect.append(x);}
+ const tel=integration.telemetry;connect.append(el('h3','Pulse & Meter · last 7 days'),el('p',tel.scope));
+ for(const t of tel.rows.slice(0,30)){const x=el('div','','line');x.append(el('h3',String(t.day).slice(0,10)+' · '+t.kind+' · '+t.label),el('p',t.quantity+' '+t.unit+(Number(t.priced_events)>0?' · reported USD '+(Number(t.cost_micros_usd)/1000000).toFixed(4):'')));connect.append(x);}
+ if(!tel.rows.length)connect.append(el('p','No telemetry received.'));
+ root.append(connect);
  const jobs=panel('Activity and jobs');if(!s.jobs.length)jobs.append(el('p','No jobs recorded.'));
  for(const j of s.jobs){const item=el('div','','line');item.append(badge(j.status),el('h3',j.kind.replaceAll('_',' ')),el('small',date(j.created_at)+' · Attempts: '+j.attempts));if(j.error)item.append(el('p',j.error));jobs.append(item);}root.append(jobs);
  const audit=panel('Audit trail');for(const a of s.audit){const item=el('div','','line');item.append(el('h3',a.action.replaceAll('_',' ')),el('small',date(a.created_at)));audit.append(item);}root.append(audit);

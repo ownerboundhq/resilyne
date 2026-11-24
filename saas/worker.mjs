@@ -5,6 +5,7 @@ import {projectGitHub,alerts,deployment,verification} from './github.mjs';
 import {sourcePath} from '../lib/core.mjs';
 import {investigate} from '../engine/diagnose.mjs';
 import {canDraft,retryEligible,exactRun} from '../engine/policy.mjs';
+import {repositoryScan} from '../connect/scan.mjs';
 const cfg=config(), pool=poolFor(cfg);
 const failure=new Set(['failure','timed_out','action_required']);
 function redact(s){return String(s||'').replace(/(?:sk-proj-|ghp_|github_pat_|sk_live_|sk_test_)[A-Za-z0-9_-]+/g,'[REDACTED]').replace(/(?:password|token|secret|api[_ -]?key)\s*[:=]\s*\S+/gi,'[REDACTED]').slice(0,1200);}
@@ -98,6 +99,10 @@ async function scan(p,g){
  await pool.query("UPDATE projects SET scan_result=$2 WHERE id=$1",[p.id,result]);
 }
 async function processJob(j,p,g){
+ if(j.kind==='readiness'){
+   const report=await repositoryScan(g,p);
+   await pool.query('UPDATE projects SET readiness_report=$2 WHERE id=$1',[p.id,report]);return;
+ }
  if(j.kind==='scan')return scan(p,g);
  if(j.kind==='propose'){
    if(j.payload.automatic&&!p.auto_propose)throw Error('Automatic investigation disabled');
@@ -172,7 +177,7 @@ async function tick(){
    await pool.query("UPDATE jobs SET status=CASE WHEN attempts>=3 THEN 'failed' ELSE 'queued' END,error='Interrupted worker',updated_at=now() WHERE status='running'");
    await pool.query("DELETE FROM sessions WHERE expires_at<now()");
    await pool.query("DELETE FROM deliveries WHERE received_at<now()-interval '30 days'");
-   await pool.query("DELETE FROM jobs WHERE kind='scan' AND status IN ('done','failed') AND updated_at<now()-interval '7 days'");
+   await pool.query("DELETE FROM jobs WHERE kind IN ('scan','readiness') AND status IN ('done','failed') AND updated_at<now()-interval '7 days'");
    const due=(await pool.query("SELECT p.* FROM projects p JOIN accounts a ON a.id=p.account_id WHERE p.enabled AND p.next_scan<=now() AND ($1::boolean=false OR a.billing_status IN ('active','trialing')) ORDER BY p.next_scan LIMIT 30",[cfg.billingRequired])).rows;
    for(const p of due)await tx(pool,async c=>{
      await enqueue(c,p.id,'scan','scan:'+p.id+':'+Math.floor(Date.now()/300000));
@@ -183,7 +188,7 @@ async function tick(){
      if(!j)break;
      try{
        const p=await one(pool,'SELECT p.*,a.billing_status FROM projects p JOIN accounts a ON a.id=p.account_id WHERE p.id=$1',[j.project_id]);
-       if(!p?.enabled||!billable(p.billing_status,cfg.billingRequired))throw Error('Project paused or billing inactive');
+       if(!p?.enabled||(j.kind!=='readiness'&&!billable(p.billing_status,cfg.billingRequired)))throw Error('Project paused or billing inactive');
        await processJob(j,p,await projectGitHub(cfg,p));
        await pool.query("UPDATE jobs SET status='done',updated_at=now(),error=NULL WHERE id=$1",[j.id]);
      }catch(e){

@@ -28,3 +28,6 @@ See [deployment guide](docs/deploy.md), [verification workflow](examples/custome
 
 ## v0.3 autonomous engine
 See [engine setup, behavior and limits](docs/engine.md). Apply the schema migration again before running the updated service. Automatic draft creation is separately opt-in and disabled by default. Production merges remain approval-gated.
+
+## v0.4 — Resilyne Connect and Scan
+See [MCP, local scanner, runtime SDK and Vault setup](docs/connect.md). Run npm install, npm run migrate and restart services. Local Scan and the local MCP tool work without a hosted backend. Connected features require the SaaS deployment.

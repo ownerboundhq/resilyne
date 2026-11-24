@@ -1,6 +1,6 @@
 {
   "name": "resilyne",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -11,11 +11,16 @@
     "worker": "node --env-file-if-exists=.env saas/worker.mjs",
     "migrate": "node --env-file-if-exists=.env saas/migrate.mjs",
     "pilot": "node --env-file-if-exists=.env server.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "scan": "node connect/cli.mjs",
+    "mcp": "node connect/mcp.mjs",
+    "vault": "node connect/vault.mjs"
   },
   "dependencies": {
     "express": "5.1.0",
     "pg": "8.16.3",
-    "stripe": "18.5.0"
+    "stripe": "18.5.0",
+    "@modelcontextprotocol/sdk": "1.17.4",
+    "zod": "3.25.76"
   }
 }

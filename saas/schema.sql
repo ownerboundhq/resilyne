@@ -42,3 +42,21 @@ CREATE TABLE IF NOT EXISTS deliveries (id text PRIMARY KEY, received_at timestam
 
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS auto_draft boolean NOT NULL DEFAULT false;
 ALTER TABLE incidents ADD COLUMN IF NOT EXISTS engine_result jsonb;
+
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS readiness_report jsonb;
+CREATE TABLE IF NOT EXISTS connect_tokens (
+ id uuid PRIMARY KEY, project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+ token_hash text NOT NULL UNIQUE, label text NOT NULL, scope text NOT NULL CHECK(scope IN ('agent','telemetry')),
+ created_at timestamptz NOT NULL DEFAULT now(), expires_at timestamptz NOT NULL, revoked_at timestamptz
+);
+CREATE TABLE IF NOT EXISTS telemetry_daily (
+ project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+ day date NOT NULL, kind text NOT NULL, label text NOT NULL, unit text NOT NULL,
+ quantity bigint NOT NULL DEFAULT 0, cost_micros_usd bigint NOT NULL DEFAULT 0,
+ priced_events bigint NOT NULL DEFAULT 0, events bigint NOT NULL DEFAULT 0,
+ updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(project_id,day,kind,label,unit)
+);
+CREATE TABLE IF NOT EXISTS telemetry_quota (
+ project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE, day date NOT NULL,
+ events integer NOT NULL, PRIMARY KEY(project_id,day)
+);
