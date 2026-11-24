@@ -39,3 +39,6 @@ CREATE TABLE IF NOT EXISTS audit (
  action text NOT NULL, detail jsonb NOT NULL DEFAULT '{}', created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE IF NOT EXISTS deliveries (id text PRIMARY KEY, received_at timestamptz NOT NULL DEFAULT now());
+
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS auto_draft boolean NOT NULL DEFAULT false;
+ALTER TABLE incidents ADD COLUMN IF NOT EXISTS engine_result jsonb;

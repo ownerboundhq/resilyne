@@ -25,3 +25,6 @@ No automatic production merges or direct deployments. Approved draft PRs can tri
 Personal GitHub installations only. HTTP probes use administrator-approved public HTTPS URLs. Deployment tracking uses GitHub events and health endpoints, not native Vercel, GCP, Firebase or Supabase APIs. Dependabot must be enabled. AI proposals are single-file; heuristic redaction cannot guarantee secret removal. Do not connect repositories with secrets in source or annotations. Source is stored in PostgreSQL: use encrypted managed storage, retention and backups before production. No automatic dependency upgrades, cloud-specific rollback, native logs, organization RBAC or production SLA. Deployment is not provisioned by these files.
 
 See [deployment guide](docs/deploy.md), [verification workflow](examples/customer-verification-workflow.yml), [release checklist](docs/release-checklist.md). `npm test` runs unit tests; RESILYNE_DB_TEST=true requires a migrated disposable database. Never run fixtures in production.
+
+## v0.3 autonomous engine
+See [engine setup, behavior and limits](docs/engine.md). Apply the schema migration again before running the updated service. Automatic draft creation is separately opt-in and disabled by default. Production merges remain approval-gated.

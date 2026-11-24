@@ -3,7 +3,8 @@ import {config,billable,allowedEndpoint,verificationGate} from './config.mjs';
 import {poolFor,one,tx,enqueue,audit,incident,dailyRepair} from './db.mjs';
 import {projectGitHub,alerts,deployment,verification} from './github.mjs';
 import {sourcePath} from '../lib/core.mjs';
-import {propose} from '../lib/repair.mjs';
+import {investigate} from '../engine/diagnose.mjs';
+import {canDraft,retryEligible,exactRun} from '../engine/policy.mjs';
 const cfg=config(), pool=poolFor(cfg);
 const failure=new Set(['failure','timed_out','action_required']);
 function redact(s){return String(s||'').replace(/(?:sk-proj-|ghp_|github_pat_|sk_live_|sk_test_)[A-Za-z0-9_-]+/g,'[REDACTED]').replace(/(?:password|token|secret|api[_ -]?key)\s*[:=]\s*\S+/gi,'[REDACTED]').slice(0,1200);}
@@ -24,13 +25,13 @@ async function evidence(g,r){
  return {steps};
 }
 async function autoProposal(p,i,path){
- if(!p.auto_propose||!cfg.apiKey||!path)return;
+ if(!p.auto_propose||!cfg.apiKey)return;
  await tx(pool,async c=>{
    const a=await one(c,'SELECT * FROM accounts WHERE id=$1 FOR UPDATE',[p.account_id]);
    const current=await one(c,'SELECT * FROM projects WHERE id=$1 AND enabled=true',[p.id]);
    if(!current?.auto_propose||!billable(a.billing_status,cfg.billingRequired))return;
    if(await one(c,"SELECT id FROM jobs WHERE project_id=$1 AND kind='propose' AND payload->>'incidentId'=$2",[p.id,i.id]))return;
-   try{await dailyRepair(c,p,i.id,path,cfg.maxDailyAI);}catch(e){if(e.message!=='Daily repair budget exhausted')throw e;}
+   try{await dailyRepair(c,p,i.id,null,cfg.maxDailyAI,true);}catch(e){if(e.message!=='Daily repair budget exhausted')throw e;}
  });
 }
 async function scan(p,g){
@@ -72,8 +73,24 @@ async function scan(p,g){
  for(const row of prs){
    try{
      const {pr,run,head}=await verification(g,row.pr_number,p.workflow_id);
+     const exact=exactRun(pr,run,p.workflow_id,p.repo,p.base_branch);
      const ready=verificationGate(pr,p.workflow_id,run,head,p.repo,p.base_branch);
-     await pool.query('UPDATE proposals SET verification=$2 WHERE id=$1',[row.id,{head,ready,conclusion:run?.conclusion||null,runUrl:run?.html_url||null,prState:pr.state,draft:pr.draft}]);
+     const verified={head,ready,exact,conclusion:exact?run.conclusion:null,runUrl:run?.html_url||null,prState:pr.state,draft:pr.draft};
+     if(cfg.autoDraft&&retryEligible(p,row.patch,verified)&&pr.head.ref==='resilyne/repair-'+row.id&&(await g.file(row.patch.path,head)).text===row.patch.replacement){
+       const baseIncident=await one(pool,"SELECT * FROM incidents WHERE id=$1 AND project_id=$2 AND status='open'",[row.incident_id,p.id]);
+       if(baseIncident)await tx(pool,async c=>{
+         const account=await one(c,'SELECT * FROM accounts WHERE id=$1 FOR UPDATE',[p.account_id]);
+         const current=await one(c,'SELECT * FROM projects WHERE id=$1',[p.id]);
+         if(!current?.enabled||!current.auto_propose||!current.auto_draft||!billable(account.billing_status,cfg.billingRequired))return;
+         if(await one(c,'SELECT id FROM jobs WHERE dedupe=$1',['retry:'+row.id]))return;
+         const count=await one(c,"SELECT count(*)::int AS n FROM jobs j JOIN projects x ON x.id=j.project_id WHERE x.account_id=$1 AND j.kind='propose' AND j.created_at>=date_trunc('day',now())",[p.account_id]);
+         if(count.n>=cfg.maxDailyAI)return;
+         const retryEvidence=await evidence(g,run);
+         await enqueue(c,p.id,'propose','retry:'+row.id,{incidentId:row.incident_id,previousId:row.id,retryEvidence});
+         await audit(c,p.account_id,p.id,'repair_retry_queued',{proposal:row.id});
+       });
+     }
+     await pool.query('UPDATE proposals SET verification=$2 WHERE id=$1',[row.id,verified]);
      if(pr.merged)await pool.query("UPDATE proposals SET status='merged' WHERE id=$1",[row.id]);
      else if(pr.state==='closed')await pool.query("UPDATE proposals SET status='closed' WHERE id=$1",[row.id]);
    }catch(e){result.errors.push('PR verification: '+redact(e.message));}
@@ -83,12 +100,34 @@ async function scan(p,g){
 async function processJob(j,p,g){
  if(j.kind==='scan')return scan(p,g);
  if(j.kind==='propose'){
+   if(j.payload.automatic&&!p.auto_propose)throw Error('Automatic investigation disabled');
    const existing=await one(pool,'SELECT id FROM proposals WHERE id=$1',[j.id]);if(existing)return;
    const i=await one(pool,"SELECT * FROM incidents WHERE id=$1 AND project_id=$2 AND status='open'",[j.payload.incidentId,p.id]);if(!i)throw Error('Incident no longer open');
-   const patch=await propose(g,{id:i.id,title:i.title,detail:JSON.stringify(i.evidence)},j.payload.path,{apiKey:cfg.apiKey,model:cfg.model});
-   patch.id=j.id;
-   await pool.query('INSERT INTO proposals(id,project_id,incident_id,patch) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO NOTHING',[j.id,p.id,i.id,patch]);
-   await audit(pool,p.account_id,p.id,'proposal_created',{proposal:j.id});return;
+   let previous;
+   if(j.payload.previousId){
+     const prior=await one(pool,'SELECT * FROM proposals WHERE id=$1 AND project_id=$2 AND incident_id=$3',[j.payload.previousId,p.id,i.id]);
+     if(!prior||!cfg.autoDraft||!retryEligible(p,prior.patch,prior.verification||{}))throw Error('Retry no longer authorized');
+     previous=prior.patch;
+   }
+   const input={...i,evidence:{...i.evidence,...(previous?{retry:j.payload.retryEvidence,previousPath:previous.path}: {})}};
+   const patch=await investigate(g,input,{apiKey:cfg.apiKey,model:cfg.model},{hint:j.payload.path||undefined,previous});
+   if(patch.decision==='escalate'){
+     await tx(pool,async c=>{
+       await c.query("UPDATE incidents SET engine_result=$2 WHERE id=$1",[i.id,{status:'needs_attention',reason:patch.reason}]);
+       await audit(c,p.account_id,p.id,'repair_escalated',{incident:i.id,reason:patch.reason});
+     });return;
+   }
+   if(previous&&patch.path===previous.path&&patch.replacement===previous.replacement)throw Error('Second attempt repeated the failed patch');
+   patch.id=j.id;patch.engine=true;
+   await tx(pool,async c=>{
+     const current=await one(c,'SELECT * FROM projects WHERE id=$1 FOR UPDATE',[p.id]);
+     const auto=cfg.autoDraft&&canDraft(current,i,patch)&&(j.payload.automatic===true||!!previous);
+     patch.autoDraft=auto;
+     await c.query('INSERT INTO proposals(id,project_id,incident_id,patch,status) VALUES($1,$2,$3,$4,$5) ON CONFLICT(id) DO NOTHING',[j.id,p.id,i.id,patch,auto?'approved':'proposed']);
+     await c.query('UPDATE incidents SET engine_result=$2 WHERE id=$1',[i.id,{status:auto?'draft_queued':'awaiting_review',proposal:j.id,attempt:patch.attempt,investigated:patch.investigated}]);
+     if(auto)await enqueue(c,p.id,'open_pr','open-pr:'+j.id,{proposalId:j.id,automatic:true});
+     await audit(c,p.account_id,p.id,'proposal_created',{proposal:j.id,automaticDraft:auto});
+   });return;
  }
  const row=await one(pool,'SELECT * FROM proposals WHERE id=$1 AND project_id=$2',[j.payload.proposalId,p.id]);
  if(!row)throw Error('Proposal not found');
@@ -96,6 +135,7 @@ async function processJob(j,p,g){
  if(j.kind==='open_pr'){
    if(row.pr_number)return;
    if(row.status!=='approved')throw Error('Proposal not approved');
+   if(j.payload.automatic&&(!cfg.autoDraft||!p.auto_propose||!p.auto_draft))throw Error('Automatic draft permission revoked');
    const pr=await g.openRepair(patch);
    await pool.query("UPDATE proposals SET status='pr_opened',pr_number=$2,pr_url=$3 WHERE id=$1",[row.id,pr.number,pr.html_url]);return;
  }
@@ -149,6 +189,7 @@ async function tick(){
      }catch(e){
        // Do not automatically repeat costly AI calls or ambiguous external writes on ordinary failures.
        await pool.query("UPDATE jobs SET status='failed',error=$2,updated_at=now() WHERE id=$1",[j.id,redact(e.message)]);
+       if(j.kind==='propose')await pool.query("UPDATE incidents SET engine_result=$2 WHERE id=$1 AND project_id=$3",[j.payload.incidentId,{status:'needs_attention',reason:redact(e.message)},j.project_id]);
        if(j.kind==='merge')await pool.query("UPDATE proposals SET status='pr_opened' WHERE id=$1 AND status='merge_queued'",[j.payload.proposalId]);
        if(j.kind==='open_pr')await pool.query("UPDATE proposals SET status='approved' WHERE id=$1 AND status='approved'",[j.payload.proposalId]);
      }

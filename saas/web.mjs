@@ -74,7 +74,7 @@ app.use('/api',async(req,res,next)=>{
  if(!req.account){if(req.path==='/me')return res.json({account:null});return res.status(401).json({error:'Sign in required'});}
  next();
 });
-app.get('/api/me',(req,res)=>res.json({account:{id:req.account.id,login:req.account.login,billing:req.account.billing_status},appSlug:/^[a-zA-Z0-9-]+$/.test(cfg.appSlug)?cfg.appSlug:null,billingConfigured:!!(stripe&&cfg.priceId),billingRequired:cfg.billingRequired,mergeEnabled:cfg.autoMerge,aiConfigured:!!cfg.apiKey,allowlist:cfg.allowlist,limits:{projects:cfg.maxProjects,dailyAI:cfg.maxDailyAI}}));
+app.get('/api/me',(req,res)=>res.json({account:{id:req.account.id,login:req.account.login,billing:req.account.billing_status},appSlug:/^[a-zA-Z0-9-]+$/.test(cfg.appSlug)?cfg.appSlug:null,billingConfigured:!!(stripe&&cfg.priceId),billingRequired:cfg.billingRequired,mergeEnabled:cfg.autoMerge,autoDraftEnabled:cfg.autoDraft,aiConfigured:!!cfg.apiKey,allowlist:cfg.allowlist,limits:{projects:cfg.maxProjects,dailyAI:cfg.maxDailyAI}}));
 app.post('/api/logout',async(req,res)=>{await pool.query('DELETE FROM sessions WHERE hash=$1',[sha(parseCookies(req.headers.cookie).resilyne_session)]);res.clearCookie('resilyne_session',cookieOptions);res.json({ok:true});});
 app.post('/api/billing',async(req,res)=>res.json({url:await checkout(pool,stripe,cfg,req.account.id)}));
 function entitled(req,res,next){if(!billable(req.account.billing_status,cfg.billingRequired))return res.status(402).json({error:'Active subscription required'});next();}
@@ -134,9 +134,10 @@ app.post('/api/projects/:id/settings',owned,async(req,res)=>{
  }
  const enabled=typeof req.body.enabled==='boolean'?req.body.enabled:req.project.enabled;
  const auto=typeof req.body.autoPropose==='boolean'?req.body.autoPropose:req.project.auto_propose;
+ const draft=auto&&cfg.autoDraft&&(typeof req.body.autoDraft==='boolean'?req.body.autoDraft:req.project.auto_draft);
  await tx(pool,async c=>{
-   await c.query('UPDATE projects SET enabled=$2,auto_propose=$3,next_scan=now() WHERE id=$1',[req.project.id,enabled,auto]);
-   await audit(c,req.account.id,req.project.id,'settings_changed',{enabled,autoPropose:auto});
+   await c.query('UPDATE projects SET enabled=$2,auto_propose=$3,auto_draft=$4,next_scan=now() WHERE id=$1',[req.project.id,enabled,auto,draft]);
+   await audit(c,req.account.id,req.project.id,'settings_changed',{enabled,autoPropose:auto,autoDraft:draft});
  });res.json({ok:true});
 });
 app.post('/api/projects/:id/scan',owned,entitled,async(req,res)=>{
@@ -145,7 +146,7 @@ app.post('/api/projects/:id/scan',owned,entitled,async(req,res)=>{
 });
 app.post('/api/projects/:id/propose',owned,entitled,async(req,res)=>{
  if(!cfg.apiKey||!req.project.enabled)throw Error('AI unavailable or project paused');
- const incidentId=uuid(req.body.incidentId),path=sourcePath(req.body.path);
+ const incidentId=uuid(req.body.incidentId),path=req.body.path?sourcePath(req.body.path):null;
  await tx(pool,async c=>{
    await one(c,'SELECT id FROM accounts WHERE id=$1 FOR UPDATE',[req.account.id]);
    if(!await one(c,"SELECT id FROM incidents WHERE id=$1 AND project_id=$2 AND status='open'",[incidentId,req.project.id]))throw Error('Open incident not found');

@@ -33,8 +33,11 @@ async function detail(){
  const base='projects/'+p.id+'/';
  const head=panel(p.repo);head.append(el('p','Branch: '+p.base_branch+' · '+(p.enabled?'Monitoring enabled':'Paused')+' · Last scan: '+date(p.last_scan)));
  const controls=el('div','','actions');controls.append(btn('Run scan',async()=>{await api(base+'scan',{});await detail();},true),btn(p.enabled?'Pause':'Resume',async()=>{await api(base+'settings',{enabled:!p.enabled});await detail();}),btn(p.auto_propose?'Disable automatic proposals':'Enable automatic proposals',async()=>{
-   if(!p.auto_propose&&!confirm('Allow Resilyne to send eligible source files and redacted CI annotations to the AI provider?'))return;
+   if(!p.auto_propose&&!confirm('Allow Resilyne to send up to six relevant source files, recent change context and redacted CI annotations to the AI provider automatically?'))return;
    await api(base+'settings',{autoPropose:!p.auto_propose});await detail();
+ }));if(me.autoDraftEnabled&&p.auto_propose)controls.append(btn(p.auto_draft?'Disable autonomous drafts':'Enable autonomous drafts',async()=>{
+   if(!p.auto_draft&&!confirm('Authorize automatic draft PRs for eligible CI failures, including one retry. This runs repository CI on generated code. Confirm that all repair branch workflows are secret-free and cannot deploy or write to production. Merging still requires approval.'))return;
+   await api(base+'settings',{autoDraft:!p.auto_draft});await detail();
  }));head.append(controls);root.append(head);
  const m=el('div','','metrics'),r=p.scan_result||{};
  m.append(metric('Endpoint health',r.health?(r.health.ok?'Healthy':'Failed'):'Not configured',r.health?.latencyMs!==undefined?r.health.latencyMs+' ms':'HTTP probe'),metric('CI status',r.ci?.conclusion||r.ci?.status||'Unknown','Selected workflow'),metric('Open incidents',s.incidents.filter(i=>i.status==='open').length,'Latest 100 incidents'));root.append(m);
@@ -45,19 +48,20 @@ async function detail(){
  const incidents=panel('Incidents');if(!s.incidents.length)incidents.append(el('p','No recorded incidents. Monitoring results will appear after a scan.'));
  for(const i of s.incidents){
    const row=el('div','','line');row.append(badge(i.status),el('h3',i.title),el('small',date(i.last_seen)));
+   if(i.engine_result)row.append(el('p','Engine: '+String(i.engine_result.status).replaceAll('_',' ')+(i.engine_result.reason?' — '+i.engine_result.reason:'')));
    const evidence=el('details');evidence.append(el('summary','Evidence'),el('pre',JSON.stringify(i.evidence,null,2)));row.append(evidence);
    if(i.evidence.url)row.append(ghLink(i.evidence.url,'View source'));
    if(i.status==='open'&&me.aiConfigured&&p.enabled){
-     const c=el('div','','actions'),input=el('input');input.placeholder='src/example.ts';input.value=i.evidence.path||'';input.setAttribute('aria-label','Source file path');
-     c.append(input,btn('Propose repair',async()=>{if(!confirm('Send the selected source file and incident evidence to the AI provider?'))return;await api(base+'propose',{incidentId:i.id,path:input.value});await detail();}));row.append(c);
+     const c=el('div','','actions'),input=el('input');input.placeholder='Optional source path';input.value=i.evidence.path||'';input.setAttribute('aria-label','Source file path');
+     c.append(input,btn('Investigate & repair',async()=>{if(!confirm('Send relevant source files and incident evidence to the AI provider for investigation?'))return;await api(base+'propose',{incidentId:i.id,path:input.value});await detail();}));row.append(c);
    }
    incidents.append(row);
  }root.append(incidents);
- const repairs=panel('Repair review');repairs.append(el('p','Draft pull requests require explicit approval. Source changes are not verified until the selected CI workflow passes. Before opening a PR, ensure the repository’s workflows cannot expose production secrets to proposed code.'));
+ const repairs=panel('Repair review');repairs.append(el('p','Draft pull requests require manual approval or explicit opt-in to autonomous drafts. Source changes are not verified until the selected CI workflow passes. Before opening a PR, ensure the repository’s workflows cannot expose production secrets to proposed code.'));
  if(!s.proposals.length)repairs.append(el('p','No repair proposals.'));
  for(const row of s.proposals){
    const item=el('div','','line'),patch=row.patch;
-   item.append(badge(row.status),el('h3',patch.path),el('p',patch.summary),el('small','Base '+patch.baseSha.slice(0,12)));
+   item.append(badge(row.status),el('h3',patch.path),el('p',patch.summary),el('p',patch.reason||''),el('small','Base '+patch.baseSha.slice(0,12)));
    for(const [label,code] of [['Original source',patch.original],['Proposed source',patch.replacement]]){const d=el('details');d.append(el('summary',label),el('pre',code));item.append(d);}
    if(row.pr_url)item.append(ghLink(row.pr_url,'Open pull request'));
    if(row.verification){item.append(el('p','CI gate: '+(row.verification.ready?'Passed':row.verification.conclusion||'Not ready')+(row.verification.draft?' · Mark ready for review in GitHub':'')));if(row.verification.runUrl)item.append(ghLink(row.verification.runUrl,'View verification run'));}
