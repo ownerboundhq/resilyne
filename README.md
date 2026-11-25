@@ -42,3 +42,7 @@ Neuravale Phase 1 hosts open-weight models rather than training a new foundation
 
 ## Phase 2 foundation (0.2)
 Select any installed Ollama model in the chat header. Delete local conversations from the composer. The backend checks model availability before writing a new message and rejects incomplete inference streams. Context is limited to the most recent 40 messages; this is not semantic long-term memory. Run the small exact-answer evaluation suite with `python -m research.evaluate --model qwen2.5:3b`. Results are local diagnostics, not frontier benchmark claims.
+
+
+## Neuravale N series (0.5 preview)
+The website brands the Qwen2.5 0.5B, 1.5B and 3B inference profiles as N1 Mini, N1 Compact and N1 respectively. These are runtime profiles, not independently trained or owned model weights. Runtime IDs and original model provenance remain visible in the selector, model catalog, and exported evaluation results. R1, C1, V1, A1 and E1 are research targets only. Website publishing source: main/docs.
