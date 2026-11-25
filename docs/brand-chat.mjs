@@ -1,0 +1,29 @@
+const $=id=>document.getElementById(id);
+const models={arc:{name:'Arc',file:'n0-model.json',version:'005',internal:'Neuravale N0 Chat 005'},ember:{name:'Ember',file:'n0-model-003.json',version:'003',internal:'Neuravale N0 Chat 003'}};
+let selected=new URLSearchParams(location.search).get('model')==='ember'?'ember':'arc',worker=null,ready=false,busy=false,epoch=0,history=[],pack=null,answerNode=null,question='',timer=null;
+const cache=new Map(),prompt=$('prompt'),selector=$('model-select');
+selector.value=selected;
+const pretty=s=>s.replace(/\s+([.,!?;:])/g,'$1').replace(/(^|[.!?]\s+)[a-z]/g,m=>m.toUpperCase());
+function status(s){$('status').textContent=s;}
+function controls(){const loading=!ready&&busy;selector.disabled=busy;$('send').disabled=!ready||busy||!prompt.value.trim();$('send').hidden=busy&&ready;$('stop').hidden=!busy||!ready;$('reset').disabled=loading;$('mobile-reset').disabled=loading;$('retry').hidden=ready||loading;for(const b of document.querySelectorAll('[data-prompt]'))b.disabled=!ready||busy;}
+function scroll(){const s=$('scroll');s.scrollTop=s.scrollHeight;}
+function resize(){prompt.style.height='auto';prompt.style.height=Math.min(prompt.scrollHeight,130)+'px';controls();}
+function clear(){history=[];$('thread').replaceChildren();$('welcome').hidden=false;answerNode=null;question='';}
+function add(role,text){$('welcome').hidden=true;const box=document.createElement('article');box.className='message '+role;const content=document.createElement('div');content.className='message-text';content.textContent=text;box.append(content);$('thread').append(box);scroll();return {box,content};}
+function actions(node,text){const row=document.createElement('div');row.className='message-actions';const b=document.createElement('button');b.type='button';b.textContent='Copy';b.onclick=async()=>{try{await navigator.clipboard.writeText(text);b.textContent='Copied';}catch{b.textContent='Copy unavailable';}};row.append(b);node.box.append(row);}
+function kill(){clearTimeout(timer);worker?.terminate();worker=null;ready=false;busy=false;}
+function fail(message){kill();status(message);controls();}
+function startWorker(data,id){worker=new Worker(new URL('./n0-worker.mjs?v=10',import.meta.url),{type:'module'});timer=setTimeout(()=>{if(id===epoch)fail('Could not start. Try again.');},15000);worker.onerror=()=>{if(id===epoch)fail('Could not start. Try again.');};worker.onmessage=({data:m})=>{if(id!==epoch)return;if(m.type==='ready'){clearTimeout(timer);ready=true;busy=false;status('Ready');controls();if(window.matchMedia('(pointer:fine)').matches)prompt.focus();}else if(m.type==='token'&&answerNode){answerNode.content.textContent=pretty(m.text);scroll();}else if(m.type==='done'){clearTimeout(timer);busy=false;if(answerNode){const text=m.text?pretty(m.text):'I could not find a response.';answerNode.content.textContent=text;if(m.text){history.push(question,m.text);history=history.slice(-6);actions(answerNode,text);}}question='';answerNode=null;scroll();controls();}else if(m.type==='error'){clearTimeout(timer);if(answerNode){answerNode.content.textContent='I could not respond. Try a shorter question.';answerNode=null;question='';}if(!ready)fail('Could not load. Try again.');else{busy=false;status('Ready');controls();}}};worker.postMessage({type:'load',pack:data});}
+async function fetchPack(config){if(cache.has(config.version))return cache.get(config.version);let error;for(const url of ['./'+config.file+'?v='+config.version,'https://raw.githubusercontent.com/ownerboundhq/resilyne/main/docs/'+config.file+'?v='+config.version]){const controller=new AbortController();const t=setTimeout(()=>controller.abort(),12000);try{const response=await fetch(url,{signal:controller.signal});if(!response.ok)throw Error('Unavailable');const data=await response.json();if(data.model!==config.internal)throw Error('Unexpected model');cache.set(config.version,data);return data;}catch(e){error=e;}finally{clearTimeout(t);}}throw error;}
+async function load(reset=true){const id=++epoch;kill();busy=true;const config=models[selected];$('welcome-name').textContent=config.name;prompt.placeholder='Message '+config.name;status('Getting ready…');if(reset)clear();controls();try{const data=await fetchPack(config);if(id!==epoch)return;pack=data;startWorker(data,id);}catch{if(id===epoch)fail('Unable to connect. Try again.');}}
+selector.onchange=()=>{selected=selector.value;load();};
+$('retry').onclick=()=>load(false);
+function reset(){if(busy&&ready)stop();clear();prompt.value='';resize();if(ready&&window.matchMedia('(pointer:fine)').matches)prompt.focus();}
+$('reset').onclick=reset;$('mobile-reset').onclick=reset;
+function stop(){if(!busy||!ready)return;const id=++epoch;if(answerNode)answerNode.content.textContent=(answerNode.content.textContent==='Thinking…'?'':answerNode.content.textContent)+' (Stopped)';answerNode=null;question='';kill();busy=true;status('Getting ready…');controls();if(pack)startWorker(pack,id);else load(false);}
+$('stop').onclick=stop;
+$('form').onsubmit=e=>{e.preventDefault();const text=prompt.value.trim();if(!ready||busy||!text)return;question=text;prompt.value='';resize();add('user',text);answerNode=add('assistant','Thinking…');busy=true;controls();worker.postMessage({type:'generate',turns:[...history,text]});timer=setTimeout(()=>{if(busy&&ready)stop();},60000);};
+prompt.addEventListener('input',resize);
+prompt.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&window.matchMedia('(pointer:fine)').matches){e.preventDefault();$('form').requestSubmit();}});
+for(const b of document.querySelectorAll('[data-prompt]'))b.onclick=()=>{if(!ready||busy)return;prompt.value=b.dataset.prompt;resize();$('form').requestSubmit();};
+controls();load();
