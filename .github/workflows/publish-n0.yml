@@ -26,6 +26,8 @@ jobs:
         with:
           node-version: '22'
       - run: pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+      - name: Confirm exporter compiles
+        run: python -m py_compile research/n0_chat/export_browser.py
       - name: Reproduce original architecture training
         run: python research/n0_chat/train.py
       - name: Export browser weights
