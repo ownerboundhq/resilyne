@@ -54,3 +54,7 @@ The wall-clock and step caps can stop before the target. Record actual additiona
 ## Corrective alignment test
 
 The five-million-pretraining-token checkpoint passed the token target but received no new assistant training and failed 120/120 strict challenge questions. A single bounded development test resumes that exact checkpoint using corrected prompt-preserving packing and a 65% short-answer batch mixture drawn from existing filtered human conversations. It measures the same fresh generated challenge cases before and after, reports actual additional assistant tokens, and preserves raw results. It is not a production training cluster or a release gate on its own. Any sustained training must move to dedicated compute. No model is deployed automatically.
+
+## Billion-token campaign
+
+See [BILLION.md](BILLION.md) for the configured, not-started dedicated GPU campaign, expanded disk-backed corpus preparation and periodic resume checkpoints. Current verified totals are recorded in billion_plan.json. This does not schedule any cloud compute or publish a new model.

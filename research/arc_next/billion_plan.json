@@ -1,0 +1,15 @@
+{
+  "status": "configured_not_started",
+  "model": "Arc Next",
+  "parameters": 4240896,
+  "verified_pretraining_tokens": 5000192,
+  "verified_conversational_tokens": 616338,
+  "cumulative_pretraining_target": 1000000000,
+  "additional_conversational_target": 1000000,
+  "minimum_expanded_corpus_token_positions": 250000000,
+  "preferred_expanded_corpus_token_positions": 1000000000,
+  "source_checkpoint_sha256": "93970736d02a48087aaecd33fbdefe9c7bc3d67667de66a75cda3448eff96736",
+  "source_run": 45536827037,
+  "hardware": "dedicated CUDA compute; not provisioned",
+  "release": "manual evaluation and browser export required"
+}
