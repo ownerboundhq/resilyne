@@ -1,3 +1,0 @@
-# Free browser scanner
-
-Open /resilyne/scan/ on GitHub Pages. Static application, no server, no account, no source uploads or AI calls. Select the Node application root. Browser APIs expose only user-selected files. The scanner reads filenames and root package.json (bounded to 160 KB), not source or environment contents. It checks indicators rather than certifying launch readiness. Individual-file selection lacks reliable paths. The sample is synthetic. JSON downloads contain the selected folder name and generic findings, not file contents. No hosted monitoring is activated.
