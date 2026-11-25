@@ -57,3 +57,9 @@ def messages(conversation_id):
 def list_conversations():
     with connect() as db:
         return [dict(row) for row in db.execute("SELECT * FROM conversations ORDER BY created_at DESC LIMIT 100")]
+
+
+def delete_conversation(conversation_id):
+    with connect() as db:
+        db.execute("DELETE FROM messages WHERE conversation_id=?", (conversation_id,))
+        return db.execute("DELETE FROM conversations WHERE id=?", (conversation_id,)).rowcount > 0

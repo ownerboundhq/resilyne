@@ -13,11 +13,12 @@ def ollama_url():
     return os.getenv("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 
 
-async def stream_model(history):
-    payload = {"model": model_name(), "stream": True, "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + [{"role": m["role"], "content": m["content"]} for m in history]}
+async def stream_model(history, selected_model=None):
+    payload = {"model": selected_model or model_name(), "stream": True, "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + [{"role": m["role"], "content": m["content"]} for m in history]}
     async with httpx.AsyncClient(timeout=httpx.Timeout(180, connect=5)) as client:
         async with client.stream("POST", ollama_url() + "/api/chat", json=payload) as response:
             response.raise_for_status()
+            completed = False
             async for line in response.aiter_lines():
                 if not line:
                     continue
@@ -28,4 +29,14 @@ async def stream_model(history):
                 if token:
                     yield token
                 if item.get("done"):
+                    completed = True
                     break
+            if not completed:
+                raise RuntimeError("Incomplete model stream")
+
+
+async def installed_models():
+    async with httpx.AsyncClient(timeout=5) as client:
+        response = await client.get(ollama_url() + "/api/tags")
+        response.raise_for_status()
+        return [item["name"] for item in response.json().get("models", []) if isinstance(item.get("name"), str)]

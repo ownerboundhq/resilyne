@@ -39,3 +39,6 @@ pytest -q
 
 ## Limitations
 Neuravale Phase 1 hosts open-weight models rather than training a new foundation model. Quality depends on the downloaded model and available RAM/GPU. Its data remains on the computer running it, except for any outbound traffic caused by your local environment. No production auth, multi-tenancy, billing, tools, agent execution or cloud deployment is implemented yet. Respect each model's license.
+
+## Phase 2 foundation (0.2)
+Select any installed Ollama model in the chat header. Delete local conversations from the composer. The backend checks model availability before writing a new message and rejects incomplete inference streams. Context is limited to the most recent 40 messages; this is not semantic long-term memory. Run the small exact-answer evaluation suite with `python -m research.evaluate --model qwen2.5:3b`. Results are local diagnostics, not frontier benchmark claims.
