@@ -1,0 +1,27 @@
+name: Neuravale utility checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/utility.mjs'
+      - 'docs/tools.mjs'
+      - 'docs/brand-chat.mjs'
+      - 'tests/utility.test.mjs'
+      - '.github/workflows/utility-checks.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          node --check docs/utility.mjs
+          node --check docs/tools.mjs
+          node --check docs/brand-chat.mjs
+          node tests/utility.test.mjs

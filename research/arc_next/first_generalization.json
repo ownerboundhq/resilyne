@@ -1,0 +1,35 @@
+{
+  "checkpoint_sha256": "76452e3321909a1751f545ded9a61e1bfbb49fb3ad229b88f8da4fc777a5f2be",
+  "run_id": 45534324557,
+  "seed": 2026112501,
+  "training_tokens": 1973304,
+  "correct": 0,
+  "total": 120,
+  "categories": {
+    "context_binding": {
+      "correct": 0,
+      "total": 20
+    },
+    "context_switch": {
+      "correct": 0,
+      "total": 20
+    },
+    "multiturn_memory": {
+      "correct": 0,
+      "total": 20
+    },
+    "arithmetic": {
+      "correct": 0,
+      "total": 20
+    },
+    "instruction_following": {
+      "correct": 0,
+      "total": 20
+    },
+    "unknown_information": {
+      "correct": 0,
+      "total": 20
+    }
+  },
+  "release_decision": "Do not promote. Language prediction loss improvement does not establish generalization."
+}
