@@ -1,0 +1,73 @@
+{
+  "model": "Neuravale N0 Chat 005",
+  "parent": "Neuravale N0 Chat 004",
+  "parameters": 170725,
+  "vocabulary": 741,
+  "training_rows": 8020,
+  "unique_prompts": 7504,
+  "additional_steps": 1400,
+  "stages": [
+    {
+      "steps": 450,
+      "dialogue": 41,
+      "prior_knowledge": 45,
+      "fresh": 71
+    },
+    {
+      "steps": 550,
+      "dialogue": 40,
+      "prior_knowledge": 52,
+      "fresh": 78
+    },
+    {
+      "steps": 400,
+      "dialogue": 41,
+      "prior_knowledge": 57,
+      "fresh": 89
+    }
+  ],
+  "baseline": {
+    "dialogue": [
+      41,
+      41
+    ],
+    "prior_knowledge": [
+      45,
+      84
+    ],
+    "fresh": [
+      42,
+      150
+    ]
+  },
+  "final": {
+    "dialogue": [
+      41,
+      41
+    ],
+    "prior_knowledge": [
+      57,
+      84
+    ],
+    "fresh": [
+      89,
+      150
+    ],
+    "fresh_memory": [
+      30,
+      30
+    ],
+    "fresh_arithmetic": [
+      7,
+      22
+    ]
+  },
+  "python_javascript_agreement": [
+    275,
+    275
+  ],
+  "checkpoint_sha256": "bf5d95522828f1c131f39120cec80030594082515ccf515064e41169e7cdebec",
+  "browser_file_sha256": "3413e05eae0de70b2fc37e8f82c095e0c20d7b6602d715b3a89cba4736494512",
+  "browser_git_blob": "bf3e7de7075bbaf75dc7342f825e185c4facd3a1",
+  "limitations": "Synthetic supervised examples; development prompts exclude exact normalized histories, but facts, operands and memory values were seen in training. Development set reused between stages. Not a general-purpose benchmark."
+}
