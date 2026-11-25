@@ -1,0 +1,46 @@
+name: Arc Next original model experiment
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/arc-next.yml'
+permissions:
+  contents: read
+concurrency:
+  group: arc-next-research
+  cancel-in-progress: false
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    env:
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_XET: '1'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install datasets==3.6.0 sentencepiece==0.2.1 huggingface_hub==0.32.4
+          python -m py_compile research/arc_next/prepare.py research/arc_next/train.py
+      - name: Prepare documented corpus
+        run: python research/arc_next/prepare.py --docs 10000
+      - name: Train new randomly initialized language model
+        run: python research/arc_next/train.py --pre-steps 1500 --chat-steps 500 --seconds 660
+      - name: Save research checkpoint and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arc-next-research-checkpoint
+          path: |
+            research/arc_next/run/checkpoint.pt
+            research/arc_next/run/tokenizer.model
+            research/arc_next/run/tokenizer.vocab
+            research/arc_next/run/report.json
+            research/arc_next/data/provenance.json
+          if-no-files-found: warn
+          retention-days: 30
