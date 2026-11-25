@@ -1,0 +1,45 @@
+{
+  "model": "Neuravale N0 Chat 004",
+  "parent": "Neuravale N0 Chat 003",
+  "parent_checkpoint": "70d6e19133330f1b28d222edc60827c01b3c85ac6efa4ca9c4615215aed37a3f",
+  "parameters": 153568,
+  "vocabulary": 608,
+  "training_examples": 4042,
+  "stages": [
+    {
+      "steps": 500,
+      "old_exact": 21,
+      "new_exact": 35
+    },
+    {
+      "steps": 350,
+      "old_exact": 18,
+      "new_exact": 50
+    },
+    {
+      "steps": 350,
+      "old_exact": 41,
+      "new_exact": 45
+    }
+  ],
+  "original_development": {
+    "before": 25,
+    "after": 41,
+    "total": 41
+  },
+  "expanded_development": {
+    "before": 0,
+    "after": 45,
+    "total": 84
+  },
+  "browser_python_output_agreement": {
+    "matches": 125,
+    "total": 125
+  },
+  "checkpoint_sha256": "9d02390861897cd2013e047c667d18dd1e8b78d3b52fbf47a79a73ca72b87a0e",
+  "browser_json_sha256": "eccbe03b462a7e12875e325b0341ef0e47c5837de70422747d393249361f437a",
+  "pretrained_third_party_weights": false,
+  "default_release": false,
+  "weights_location": "Exact 004 checkpoint packaged locally; not uploaded in this commit.",
+  "limitations": "Synthetic data; old development suite consulted during iteration; new suite holds out wording but not all facts or operands. Model incorrectly answered 5 plus 3 with 9."
+}

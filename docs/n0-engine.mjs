@@ -1,7 +1,7 @@
 const D=64,H=4,K=16;
 export function createModel(pack){
- if(pack.format!=='neuravale.n0.f32le.v1'||pack.model!=='Neuravale N0 Chat 003')throw Error('Unsupported Neuravale checkpoint');
- const v=pack.vocab,V=Object.keys(v).length,inv=Object.keys(v).sort((a,b)=>v[a]-v[b]);if(V!==215||inv.slice(0,6).join(',')!=='<pad>,<bos>,<user>,<assistant>,<eos>,<unk>'||inv.some((w,i)=>v[w]!==i))throw Error('Invalid vocabulary');
+ if(pack.format!=='neuravale.n0.f32le.v1'||!['Neuravale N0 Chat 003','Neuravale N0 Chat 004'].includes(pack.model))throw Error('Unsupported Neuravale checkpoint');
+ const v=pack.vocab,V=Object.keys(v).length,inv=Object.keys(v).sort((a,b)=>v[a]-v[b]);if((V<215||V>4096)||inv.slice(0,6).join(',')!=='<pad>,<bos>,<user>,<assistant>,<eos>,<unk>'||inv.some((w,i)=>v[w]!==i))throw Error('Invalid vocabulary');
  const t={};function tensor(name,n){const item=pack.tensors[name];if(!item||item.shape.reduce((a,b)=>a*b,1)!==n)throw Error('Invalid tensor '+name);const raw=atob(item.data);if(raw.length!==4*n)throw Error('Invalid tensor size');const b=new Uint8Array(raw.length);for(let i=0;i<b.length;i++)b[i]=raw.charCodeAt(i);const a=new Float32Array(n),view=new DataView(b.buffer);for(let i=0;i<n;i++){a[i]=view.getFloat32(i*4,true);if(!Number.isFinite(a[i]))throw Error('Nonfinite weight');}t[name]=a;}
  tensor('emb.weight',V*D);tensor('pos.weight',128*D);tensor('out.weight',V*D);tensor('out.bias',V);
  for(let l=0;l<2;l++){const p='layers.layers.'+l+'.';for(const [key,n] of [['self_attn.in_proj_weight',192*64],['self_attn.in_proj_bias',192],['self_attn.out_proj.weight',4096],['self_attn.out_proj.bias',64],['linear1.weight',8192],['linear1.bias',128],['linear2.weight',8192],['linear2.bias',64],['norm1.weight',64],['norm1.bias',64],['norm2.weight',64],['norm2.bias',64]])tensor(p+key,n);}
