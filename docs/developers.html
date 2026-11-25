@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Developers | Neuravale</title><link rel="stylesheet" href="./site.css"></head><body><header><a class="brand" href="./">◈ NEURAVALE</a><nav><a href="./chat.html">Chat</a><a href="./core.html">Core</a><a href="./research.html">Research</a><a href="./developers.html">Developers</a></nav></header><main><div class="eyebrow">LOCAL API · DEVELOPER PREVIEW</div><h1>Build with Neuravale.</h1><p>Install Python 3.11+ and Ollama. Clone the repository and run the local API.</p><pre>git clone https://github.com/ownerboundhq/resilyne.git
+cd resilyne
+ollama pull qwen2.5:3b
+python -m venv .venv
+# Activate your virtual environment
+pip install -r requirements.txt
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000</pre><p>Open http://127.0.0.1:8000/docs for interactive API documentation.</p><pre>curl http://127.0.0.1:8000/api/models
+curl -N -H "Content-Type: application/json" \
+  -d '{"message":"Hello","model":"qwen2.5:3b"}' \
+  http://127.0.0.1:8000/api/chat</pre><p>No public API endpoint, authentication or production rate limits are available. Do not expose this local service directly to the internet.</p></main><footer>NEURAVALE · Independent intelligence · Experimental developer preview · <a href="https://github.com/ownerboundhq/resilyne">Source code</a></footer></body></html>
