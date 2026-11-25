@@ -1,0 +1,17 @@
+const $=id=>document.getElementById(id);
+const original='70d6e19133330f1b28d222edc60827c01b3c85ac6efa4ca9c4615215aed37a3f';
+let worker=null,ready=false,busy=false,turns=[],output=null,question='',serial=0;
+const pretty=s=>s.replace(/\s+([.,!?;:])/g,'$1').replace(/(^|[.!?]\s+)[a-z]/g,m=>m.toUpperCase());
+function controls(){ $('prompt').disabled=!ready||busy;$('send').disabled=!ready||busy;$('reset').disabled=busy;$('retry').disabled=busy;$('checkpoint').disabled=busy;$('stop').disabled=!busy||!ready; }
+function status(s){$('status').textContent=s;}
+function bubble(role,s){const el=document.createElement('article');el.className=role;el.textContent=s;$('thread').append(el);el.scrollIntoView({block:'nearest'});return el;}
+function terminate(){worker?.terminate();worker=null;ready=false;busy=false;}
+function boot(pack){terminate();busy=true;controls();worker=new Worker(new URL('./n0-worker.mjs',import.meta.url),{type:'module'});worker.onerror=()=>{terminate();status('Model worker failed. Retry or choose the local checkpoint.');controls();};worker.onmessage=({data:m})=>{if(m.type==='ready'){ready=true;busy=false;turns=[];$('thread').replaceChildren();status('Ready · '+(m.hash===original?'Original local checkpoint':'Reproduced checkpoint')+' · CPU · '+(m.score?.correct??'?')+'/'+(m.score?.total??'?')+' development examples');$('prompt').placeholder='Say hello…';}else if(m.type==='token'){if(output)output.textContent=pretty(m.text);}else if(m.type==='done'){if(!m.text){output.textContent='The model returned no text.';}else{output.textContent=pretty(m.text);turns.push(question,m.text);turns=turns.slice(-6);}question='';output=null;busy=false;}else if(m.type==='error'){if(output)output.textContent='Model error: '+m.text;output=null;question='';if(!ready)terminate();busy=false;status(m.text);}controls();};worker.postMessage({type:'load',pack});}
+async function getPack(url){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),15000);try{const r=await fetch(url,{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error('Checkpoint unavailable');return await r.json();}finally{clearTimeout(timer);}}
+async function load(){const id=++serial;terminate();busy=true;controls();status('Loading Neuravale N0 Chat 003…');for(const url of ['./n0-model.json','https://raw.githubusercontent.com/ownerboundhq/resilyne/main/docs/n0-model.json']){try{const pack=await getPack(url);if(id!==serial)return;boot(pack);return;}catch{}}if(id===serial){busy=false;status('Public checkpoint not available yet. Retry after the build, or select the original browser checkpoint JSON below. No other model is substituted.');controls();}}
+$('retry').onclick=load;
+$('checkpoint').onchange=async()=>{const file=$('checkpoint').files[0];if(!file)return;++serial;terminate();busy=true;controls();try{if(file.size>2e6)throw Error('Checkpoint exceeds size limit');boot(JSON.parse(await file.text()));}catch(e){busy=false;status(e.message);controls();}finally{$('checkpoint').value='';}};
+$('form').onsubmit=e=>{e.preventDefault();const text=$('prompt').value.trim();if(!ready||busy||!text)return;question=text;$('prompt').value='';bubble('user',text);output=bubble('assistant','Generating…');busy=true;controls();worker.postMessage({type:'generate',turns:[...turns,text]});};
+$('reset').onclick=()=>{turns=[];$('thread').replaceChildren();};
+$('stop').onclick=()=>{if(output)output.textContent+=' (Stopped)';output=null;question='';load();};
+controls();load();

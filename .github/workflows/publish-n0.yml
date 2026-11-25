@@ -1,0 +1,51 @@
+name: Neuravale N0 browser checkpoint
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-n0.yml'
+      - 'research/n0_chat/train.py'
+      - 'research/n0_chat/export_browser.py'
+      - 'docs/n0-engine.mjs'
+permissions:
+  contents: write
+concurrency:
+  group: n0-browser-checkpoint
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+      - name: Reproduce original architecture training
+        run: python research/n0_chat/train.py
+      - name: Export browser weights
+        run: python research/n0_chat/export_browser.py research/n0_chat docs/n0-model.json
+      - name: Compare JS inference with Python
+        run: node research/n0_chat/browser-test.mjs
+      - name: Publish verified checkpoint (do not overwrite an existing checkpoint)
+        run: |
+          cp docs/n0-model.json /tmp/n0-model.json
+          cp research/n0_chat/report.json /tmp/n0-browser-report.json
+          git fetch origin main
+          git reset --hard origin/main
+          if test -f docs/n0-model.json; then
+            echo "Checkpoint already exists; not overwriting."
+            exit 0
+          fi
+          cp /tmp/n0-model.json docs/n0-model.json
+          cp /tmp/n0-browser-report.json research/n0_chat/browser-run-report.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f docs/n0-model.json research/n0_chat/browser-run-report.json
+          git commit -m "Publish reproduced N0 Chat 003 browser weights"
+          git push origin HEAD:main

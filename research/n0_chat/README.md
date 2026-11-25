@@ -10,4 +10,6 @@ The exact locally trained checkpoint and complete archive have NOT been uploaded
 
 Install Python 3.11+ and PyTorch 2.10, then run `python research/n0_chat/train.py`. This generates the vocabulary, training and test datasets, report, and a fresh checkpoint. Reproduced weights may differ across environments. Run `python research/n0_chat/chat.py` to chat locally. Type /reset or /quit.
 
-This research model is not connected to the public web chat. The repository is public; publishing weights here makes them publicly accessible. No model license grant is implied by this note.
+The browser chat defaults to N0 Chat 003. The browser export uses the same architecture, and a GitHub Actions workflow reproduces training and publishes the verified checkpoint when successful. The browser identifies whether the loaded checkpoint is the original local binary or a reproduced run. The repository is public; publishing weights here makes them publicly accessible. No model license grant is implied by this note.
+
+Browser weights are public when served client-side. They are not secret or access-controlled.
