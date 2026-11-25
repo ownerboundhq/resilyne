@@ -1,0 +1,22 @@
+{
+  "run_id": 45536827037,
+  "artifact_id": 14987815657,
+  "checkpoint_sha256": "93970736d02a48087aaecd33fbdefe9c7bc3d67667de66a75cda3448eff96736",
+  "parameters": 4240896,
+  "training_tokens": 5616530,
+  "pretraining_tokens": 5000192,
+  "conversational_tokens": 616338,
+  "additional_conversational_tokens": 179034,
+  "additional_chat_steps": 650,
+  "chat_validation_before": 4.662395483015678,
+  "chat_validation_after": 4.396717060172263,
+  "evaluation_before": [
+    0,
+    60
+  ],
+  "evaluation_after": [
+    0,
+    60
+  ],
+  "release": "Opt-in experimental only; not a quality pass. Public browser weights."
+}

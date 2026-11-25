@@ -1,3 +1,4 @@
 import {createModel} from './n0-engine.mjs?v=10';
+import {createArcNext} from './arc-next-engine.mjs?v=1';
 let model=null;
-self.onmessage=({data:m})=>{try{if(m.type==='load'){model=createModel(m.pack);self.postMessage({type:'ready',model:m.pack.model,hash:m.pack.checkpoint_sha256,score:m.pack.development_score});}else if(m.type==='generate'){if(!model)throw Error('Model not loaded');const answer=model.generate(m.turns,text=>self.postMessage({type:'token',text}));self.postMessage({type:'done',text:answer});}}catch(e){self.postMessage({type:'error',text:e.message});}};
+self.onmessage=({data:m})=>{try{if(m.type==='load'){model=m.pack.format==='neuravale.arcnext.f32le.v1'?createArcNext(m.pack):createModel(m.pack);self.postMessage({type:'ready',model:m.pack.model,hash:m.pack.checkpoint_sha256,score:m.pack.development_score});}else if(m.type==='generate'){if(!model)throw Error('Model not loaded');const answer=model.generate(m.turns,text=>self.postMessage({type:'token',text}));self.postMessage({type:'done',text:answer});}}catch(e){self.postMessage({type:'error',text:e.message});}};

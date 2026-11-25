@@ -1,0 +1,64 @@
+name: Export and publish experimental Arc Next
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-arc-next.yml'
+      - 'research/arc_next/export_web.py'
+      - 'research/arc_next/browser_parity.mjs'
+      - 'docs/arc-next-engine.mjs'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: arc-next-export
+  cancel-in-progress: false
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: arc-next-alignment-test
+          run-id: '45536827037'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: research/arc_next
+      - name: Install and export exact trained checkpoint
+        run: |
+          pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install sentencepiece==0.2.1
+          python research/arc_next/export_web.py research/arc_next/run/checkpoint.pt --out /tmp/arc-next-model.json --fixtures /tmp/arc-next-fixtures.json
+      - name: Verify exact tokenizer and greedy output against Python
+        run: |
+          node --check docs/arc-next-engine.mjs
+          node --check docs/brand-chat.mjs
+          node --check docs/n0-worker.mjs
+          node research/arc_next/browser_parity.mjs /tmp/arc-next-model.json /tmp/arc-next-fixtures.json
+      - name: Commit experimental public browser weights
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
+          # Do not publish a pack tested against a different engine revision.
+          git diff --exit-code "$GITHUB_SHA" HEAD -- docs/arc-next-engine.mjs research/arc_next/export_web.py research/arc_next/browser_parity.mjs
+          cp /tmp/arc-next-model.json docs/arc-next-model.json
+          git add docs/arc-next-model.json
+          git config user.name "Neuravale checkpoint publisher"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --cached --quiet; then echo 'Already published'; else git commit -m "Publish verified Arc Next experimental browser checkpoint" && git push origin HEAD:main; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arc-next-browser-export
+          path: |
+            /tmp/arc-next-model.json
+            /tmp/arc-next-fixtures.json
+          if-no-files-found: warn
+          retention-days: 30
