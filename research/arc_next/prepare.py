@@ -62,6 +62,6 @@ def main():
         if len(pairs)<(100 if split=='train' else 20):raise RuntimeError('Insufficient human conversation data '+split)
         random.Random(42).shuffle(pairs);write_jsonl(p/filename,pairs);print(split,len(pairs),flush=True)
     if tree_sets['train'] & tree_sets['validation']:raise RuntimeError('Conversation tree leakage')
-    report={'sources':[{'dataset':cosmo,'revision':cr,'license':'Apache-2.0','note':'Synthetic text generated with Mixtral; no Mixtral weights loaded.'},{'dataset':oasst,'revision':ar,'license':'Apache-2.0','note':'Filtered human messages; basic automated filtering is not a complete safety or privacy review.'}],'files':{f.name:{'sha256':hashlib.sha256(f.read_bytes()).hexdigest(),'rows':sum(1 for _ in f.open())} for f in p.glob('*.jsonl')}}
+    report={'sources':[{'dataset':cosmo,'revision':cr,'license':'Apache-2.0','note':'Synthetic text generated with Mixtral; no Mixtral weights loaded.'},{'dataset':oasst,'revision':ar,'license':'Apache-2.0','note':'Filtered human messages; basic automated filtering is not a complete safety or privacy review.'}],'files':{f.name:{'sha256':hashlib.sha256(f.read_bytes()).hexdigest(),'rows':sum(1 for _ in f.open(encoding='utf-8'))} for f in p.glob('*.jsonl')}}
     (p/'provenance.json').write_text(json.dumps(report,indent=2));print(json.dumps(report),flush=True)
 if __name__=='__main__':main()
