@@ -1,0 +1,76 @@
+name: Arc Next million-token continuation
+on:
+  workflow_run:
+    workflows: ["Arc Next original model experiment"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      prior_run:
+        description: Successful Arc Next checkpoint run ID
+        required: true
+        default: '45533140718'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: arc-next-million-token-continuation
+  cancel-in-progress: false
+jobs:
+  continuation:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.id == 45533140718 && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_XET: '1'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: arc-next-research-checkpoint
+          run-id: ${{ github.event_name == 'workflow_dispatch' && inputs.prior_run || github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: research/arc_next
+      - name: Install dependencies and validate source
+        run: |
+          pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install datasets==3.6.0 sentencepiece==0.2.1 huggingface_hub==0.32.4
+          python -m py_compile research/arc_next/train.py research/arc_next/resume_data.py
+          test -f research/arc_next/run/checkpoint.pt
+          test -f research/arc_next/run/tokenizer.model
+          cp research/arc_next/data/provenance.json /tmp/prior-provenance.json
+      - name: Reproduce exact training corpus
+        run: python research/arc_next/resume_data.py /tmp/prior-provenance.json research/arc_next/data
+      - name: Continue original model toward five million pretraining tokens
+        run: |
+          python research/arc_next/train.py --resume research/arc_next/run/checkpoint.pt --pre-steps 6000 --chat-steps 1500 --seconds 1800 --pre-token-target 5000000 --chat-token-target 300000
+      - name: Report actual measured token counts
+        if: always()
+        run: |
+          python - <<'PY'
+          import json,pathlib,os
+          p=pathlib.Path('research/arc_next/run/report.json')
+          if not p.exists(): raise SystemExit('No checkpoint report')
+          r=json.loads(p.read_text())
+          actual={n:sum(s['supervised_tokens'] for s in r['stages'] if s['stage']==n) for n in ('pretrain','chat')}
+          lines=['## Measured training results',f"Pretraining tokens: {actual['pretrain']:,} / 5,000,000",f"Conversational response tokens: {actual['chat']:,} / 300,000",f"Total supervised token positions: {sum(actual.values()):,}",'Research only; no automatic website deployment.']
+          print('\n'.join(lines))
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:f.write('\n\n'.join(lines)+'\n')
+          PY
+      - name: Preserve continuation checkpoint and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arc-next-million-checkpoint
+          path: |
+            research/arc_next/run/checkpoint.pt
+            research/arc_next/run/tokenizer.model
+            research/arc_next/run/tokenizer.vocab
+            research/arc_next/run/report.json
+            research/arc_next/data/provenance.json
+          if-no-files-found: warn
+          retention-days: 30

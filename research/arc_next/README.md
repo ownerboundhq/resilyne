@@ -20,3 +20,13 @@ python research/arc_next/train.py --pre-steps 1500 --chat-steps 500 --seconds 66
 For GPU experiments increase token budget on your own compute. To resume, reuse the original data, tokenizer and output directory and pass --resume research/arc_next/run/checkpoint.pt. Resume adds new steps in both stages; set --pre-steps 0 or --chat-steps 0 to skip a stage's updates.
 
 The one-off GitHub workflow runs a bounded research smoke experiment and preserves a model checkpoint, tokenizer, measured held-out loss and raw generated sample responses as run artifacts. It never replaces the public model. Lower perplexity is not evidence of correct answers; independent factual, arithmetic, dialogue, privacy and safety evaluation and browser-runtime implementation are required before promoting any successor. The default Arc remains unchanged.
+
+## Million-token continuation
+
+The bounded continuation targets cumulative 5,000,000 supervised pretraining token positions and 300,000 supervised assistant-response token positions. These are processed positions (including repeat exposure), not unique vocabulary entries or millions of distinct documents. The first successful experiment's checkpoint, optimizer and tokenizer are reused; the original corpus is reconstructed with pinned revisions and matching hashes. The report records actual counts and whether each target was reached. The CPU time cap can stop training before the targets; larger campaigns should run on dedicated compute. No automatic promotion to the public website.
+
+For subsequent local continuation, use the same corpus and output directory, then run:
+
+```sh
+python research/arc_next/train.py --resume research/arc_next/run/checkpoint.pt --pre-steps 6000 --chat-steps 1500 --seconds 1800 --pre-token-target 5000000 --chat-token-target 300000
+```
