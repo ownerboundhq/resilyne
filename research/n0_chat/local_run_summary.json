@@ -1,0 +1,19 @@
+{
+  "model": "Neuravale N0 Chat 003",
+  "architecture": "causal transformer, 2 layers, 4 heads",
+  "parameters": 102871,
+  "vocabulary": 215,
+  "training_examples": 1608,
+  "steps": 1250,
+  "seconds": 26.13364815711975,
+  "development_exact_matches": {
+    "before": 0,
+    "after": 25,
+    "total": 41
+  },
+  "pretrained_weights": false,
+  "checkpoint_sha256": "70d6e19133330f1b28d222edc60827c01b3c85ac6efa4ca9c4615215aed37a3f",
+  "archive_sha256": "2d1255edfabfd73fcb7b6bee743442590b9fafaeb8f5c735798a7841c8f31116",
+  "checkpoint_status": "Trained locally; original binary not uploaded to GitHub",
+  "limitations": "Synthetic narrow dialogue; development suite reused during iteration; no independent general-purpose benchmark."
+}

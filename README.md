@@ -50,3 +50,7 @@ The website brands the Qwen2.5 0.5B, 1.5B and 3B inference profiles as N1 Mini, 
 
 ## Browser CPU compatibility (0.6)
 Chat and Research expose CPU/WebAssembly profiles even without WebGPU. N1 Lite uses SmolLM2 135M Instruct ONNX, N1 Mini CPU uses Qwen2.5 0.5B Instruct ONNX. CPU runs in a worker via Transformers.js 3.8.1, single-threaded, q4; GPU options are discovered separately. CPU responses appear after generation, not token by token. Actual performance depends on browser and memory. No hosted inference or paid API is involved.
+
+
+## Original model research: N0 Chat 003
+See [research/n0_chat](research/n0_chat) for the from-scratch dialogue model training source, local demo and measured run summary. The exact original checkpoint is not yet uploaded. The public chat still uses third-party models; N0 Chat 003 is a narrow research prototype.
