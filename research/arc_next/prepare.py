@@ -3,7 +3,7 @@ import argparse, hashlib, json, pathlib, random, re
 from itertools import islice
 def sha(s): return hashlib.sha256(s.encode()).hexdigest()
 def write_jsonl(path,rows):
-    path.write_text(''.join(json.dumps(x,ensure_ascii=False)+'\n' for x in rows),encoding='utf-8')
+    path.write_text(''.join(json.dumps(x,ensure_ascii=False)+'\n' for x in rows),encoding='utf-8',newline='\n')
 def clean(s):
     s=s.strip().replace('\x00','')
     s=re.sub(r'[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}', '[redacted email]',s)
