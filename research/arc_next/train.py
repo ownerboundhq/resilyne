@@ -81,7 +81,9 @@ def generate(model,sp,prompt,device,max_new=80):
         tokens.append(j);out.append(j)
     return sp.decode(out)
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--data',default='research/arc_next/data');ap.add_argument('--out',default='research/arc_next/run');ap.add_argument('--pre-steps',type=int,default=1500);ap.add_argument('--chat-steps',type=int,default=500);ap.add_argument('--width',type=int,default=256);ap.add_argument('--layers',type=int,default=4);ap.add_argument('--context',type=int,default=128);ap.add_argument('--batch',type=int,default=8);ap.add_argument('--vocab',type=int,default=4096);ap.add_argument('--seconds',type=int,default=660);ap.add_argument('--resume');ap.add_argument('--pre-token-target',type=int,default=0);ap.add_argument('--chat-token-target',type=int,default=0);args=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument('--data',default='research/arc_next/data');ap.add_argument('--out',default='research/arc_next/run');ap.add_argument('--pre-steps',type=int,default=1500);ap.add_argument('--chat-steps',type=int,default=500);ap.add_argument('--width',type=int,default=256);ap.add_argument('--layers',type=int,default=4);ap.add_argument('--context',type=int,default=128);ap.add_argument('--batch',type=int,default=8);ap.add_argument('--vocab',type=int,default=4096);ap.add_argument('--seconds',type=int,default=660);ap.add_argument('--resume');ap.add_argument('--pre-token-target',type=int,default=0);ap.add_argument('--chat-token-target',type=int,default=0);ap.add_argument('--chat-extra-tokens',type=int,default=0,help='Additional supervised assistant tokens in this run, beyond prior cumulative count');args=ap.parse_args()
+    if args.chat_extra_tokens<0 or args.chat_token_target<0 or args.pre_token_target<0:ap.error('Token targets must be nonnegative')
+    if args.chat_extra_tokens and args.chat_steps<=0:ap.error('--chat-extra-tokens requires positive --chat-steps')
     torch.manual_seed(42);torch.set_num_threads(min(4,torch.get_num_threads()));device='cuda' if torch.cuda.is_available() else 'cpu';p=pathlib.Path(args.data);o=pathlib.Path(args.out);o.mkdir(parents=True,exist_ok=True)
     if args.resume:
         ck=torch.load(args.resume,map_location=device,weights_only=True);c=ck['config'];sp=spm.SentencePieceProcessor(model_file=str(o/'tokenizer.model'));assert c['vocab']==sp.vocab_size()
@@ -97,7 +99,9 @@ def main():
     if args.resume:
         current=report['provenance'];m.load_state_dict(ck['model']);opt.load_state_dict(ck['optimizer']);report=ck['report']
         if current!=report['provenance']:raise RuntimeError('Resume corpus provenance changed')
-    report_target={'pretrain':args.pre_token_target,'chat':args.chat_token_target}
+    prior_chat_tokens=sum(s['supervised_tokens'] for s in report['stages'] if s['stage']=='chat')
+    report_target={'pretrain':args.pre_token_target,'chat':max(args.chat_token_target,prior_chat_tokens+args.chat_extra_tokens) if args.chat_extra_tokens else args.chat_token_target}
+    report['requested_additional_chat_tokens']=args.chat_extra_tokens
     if not args.resume:report['baseline']={'pretrain_loss':measure(m,vf,100),'chat_loss':measure(m,cv,101)}
     print(json.dumps({k:v for k,v in report.items() if k!='provenance'}),flush=True)
     report['corpus_pretraining_token_positions']=len(pre)
@@ -114,12 +118,12 @@ def main():
         before=measure(m,val,202);start_tokens=report['training_tokens_processed']
         for i in range(steps):
             if target and prior_tokens+report['training_tokens_processed']-start_tokens>=target:break
-            if time.monotonic()-start>limit and i>0:break
+            if time.monotonic()-start>limit:break
             m.train();x,y=fn(rng);opt.zero_grad(set_to_none=True);loss=loss_for(m,x,y)
             if not torch.isfinite(loss):raise RuntimeError('Nonfinite loss')
             loss.backward();nn.utils.clip_grad_norm_(m.parameters(),1.0);opt.step();done+=1;report['training_tokens_processed']+=int((y!=-100).sum())
             if done%50==0:print(name,done,'loss',round(float(loss),3),'stage_tokens_total',prior_tokens+report['training_tokens_processed']-start_tokens,'elapsed',round(time.monotonic()-start),flush=True)
-        after=measure(m,val,202);report['stages'].append({'stage':name,'steps':done,'supervised_tokens':report['training_tokens_processed']-start_tokens,'validation_before':before,'validation_after':after,'validation_perplexity':math.exp(min(after,20))});save();print(report['stages'][-1],flush=True)
+        after=measure(m,val,202);report['stages'].append({'stage':name,'steps':done,'supervised_tokens':report['training_tokens_processed']-start_tokens,'validation_before':before,'validation_after':after,'validation_perplexity':math.exp(min(after,20)),'packing':'v2' if name=='chat' else 'plain language'});save();print(report['stages'][-1],flush=True)
     report['actual_stage_tokens']={name:sum(s['supervised_tokens'] for s in report['stages'] if s['stage']==name) for name in ('pretrain','chat')}
     report['target_met']={name:report['actual_stage_tokens'][name]>=target for name,target in report_target.items() if target}
     print('TOKEN ACCOUNTING',json.dumps({'actual':report['actual_stage_tokens'],'targets':report_target,'met':report['target_met']}),flush=True)

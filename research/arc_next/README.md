@@ -39,3 +39,14 @@ python research/arc_next/evaluate_generalization.py research/arc_next/run/checkp
 ```
 
 The second command generates novel random names, context associations, operand combinations, and output instructions after training. It stores the seed, exact responses, checkpoint SHA-256 and per-category scores. Do not train on evaluation cases or tune a release to them; keep a separate final set and perform factual and safety review. The supplied assistant acknowledgement in memory tests is not a generated response. The new conversation packing keeps room for the user's question and does not teach a false stop token for truncated answers. Validation loss before/after a packing change is not directly comparable across versions. No claim of general-purpose ability is made until actual results exist.
+
+## Post-pretraining conversation alignment (dedicated compute)
+
+The first continuation used a cumulative assistant-token target of 300,000, already exceeded by the original checkpoint. Its actual chat update count must be checked before judging conversational quality. The trainer now accepts `--chat-extra-tokens`, an additional budget independent of prior training. Run the following after downloading the successful continuation artifact, retaining its tokenizer and restoring the exact recorded corpus. This is a proposed local/dedicated-compute experiment, not an automatically scheduled GitHub training job.
+
+```sh
+python research/arc_next/train.py --resume research/arc_next/run/checkpoint.pt --pre-steps 0 --chat-steps 6000 --chat-extra-tokens 500000 --seconds 3600
+python research/arc_next/evaluate_generalization.py research/arc_next/run/checkpoint.pt --n 20 --out generalization.json
+```
+
+The wall-clock and step caps can stop before the target. Record actual additional tokens, run qualitative checks, and use fresh evaluation examples rather than training on the previous challenge suite. Preserve the prior artifact before resuming. No automatic promotion or additional hosted compute allocation is implied.
