@@ -1,0 +1,32 @@
+name: Neuravale N1 Lite training
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'research/n1_lite/**'
+      - '.github/workflows/train-n1-lite.yml'
+permissions:
+  contents: read
+jobs:
+  experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CPU PyTorch
+        run: pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+      - name: Install pinned training dependencies
+        run: pip install -r research/n1_lite/requirements.txt
+      - name: Fine-tune and evaluate
+        run: python research/n1_lite/train.py --epochs 2 --output artifacts/n1-lite
+      - name: Save trained adapter and evaluation
+        uses: actions/upload-artifact@v4
+        with:
+          name: neuravale-n1-lite-sft-001
+          path: artifacts/n1-lite/
+          if-no-files-found: error
+          retention-days: 30
