@@ -48,6 +48,8 @@ jobs:
       - name: Continue original model toward five million pretraining tokens
         run: |
           python research/arc_next/train.py --resume research/arc_next/run/checkpoint.pt --pre-steps 6000 --chat-steps 1500 --seconds 1800 --pre-token-target 5000000 --chat-token-target 300000
+      - name: Evaluate newly generated compositional questions
+        run: python research/arc_next/evaluate_generalization.py research/arc_next/run/checkpoint.pt --n 10 --out research/arc_next/run/generalization.json
       - name: Report actual measured token counts
         if: always()
         run: |
@@ -71,6 +73,7 @@ jobs:
             research/arc_next/run/tokenizer.model
             research/arc_next/run/tokenizer.vocab
             research/arc_next/run/report.json
+            research/arc_next/run/generalization.json
             research/arc_next/data/provenance.json
           if-no-files-found: warn
           retention-days: 30

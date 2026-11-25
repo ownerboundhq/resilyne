@@ -30,3 +30,12 @@ For subsequent local continuation, use the same corpus and output directory, the
 ```sh
 python research/arc_next/train.py --resume research/arc_next/run/checkpoint.pt --pre-steps 6000 --chat-steps 1500 --seconds 1800 --pre-token-target 5000000 --chat-token-target 300000
 ```
+
+## Local inference and unfamiliar-question evaluation
+
+```sh
+python research/arc_next/inference.py research/arc_next/run/checkpoint.pt
+python research/arc_next/evaluate_generalization.py research/arc_next/run/checkpoint.pt --n 20 --out generalization.json
+```
+
+The second command generates novel random names, context associations, operand combinations, and output instructions after training. It stores the seed, exact responses, checkpoint SHA-256 and per-category scores. Do not train on evaluation cases or tune a release to them; keep a separate final set and perform factual and safety review. The supplied assistant acknowledgement in memory tests is not a generated response. The new conversation packing keeps room for the user's question and does not teach a false stop token for truncated answers. Validation loss before/after a packing change is not directly comparable across versions. No claim of general-purpose ability is made until actual results exist.

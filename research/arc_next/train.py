@@ -32,12 +32,21 @@ def make_tokenizer(data,out,vocab):
 def seqs(rows,sp,T):
     u=sp.piece_to_id('<user>');a=sp.piece_to_id('<assistant>');result=[]
     for r in rows:
-        prefix=[sp.bos_id()]
-        for i,t in enumerate(r['turns']):prefix.extend([u if i%2==0 else a]+sp.encode(t))
-        prefix.append(a);answer=sp.encode(r['answer'])+[sp.eos_id()]
-        if len(answer)>=T:answer=answer[:T-2]+[sp.eos_id()]
-        prefix=prefix[-(T+1-len(answer)):]
-        if not prefix or prefix[-1]!=a:continue
+        if not r['turns'] or len(r['turns'])%2!=1:continue
+        # Keep at least half of the available context for the question/history.
+        # Do not teach an artificial EOS at the truncation boundary.
+        answer=sp.encode(r['answer'])+[sp.eos_id()]
+        answer=answer[:max(1,T//2)]
+        newest=sp.encode(r['turns'][-1])
+        budget=T+1-len(answer)
+        newest=newest[-max(1,budget-3):]
+        prefix=[sp.bos_id(),u]+newest+[a]
+        # Retain complete earlier dialogue pairs where space permits.
+        for i in range(len(r['turns'])-3,-1,-2):
+            pair=[u]+sp.encode(r['turns'][i])+[a]+sp.encode(r['turns'][i+1])
+            if len(prefix)+len(pair)>budget:break
+            prefix=prefix[:1]+pair+prefix[1:]
+        if len(prefix)+len(answer)>T+1:raise RuntimeError('Context overflow')
         x=prefix+answer;y=[-100]*len(prefix)+answer
         result.append((x[:-1],y[1:]))
     if not result:raise ValueError('No usable dialogue examples')
@@ -93,6 +102,7 @@ def main():
     print(json.dumps({k:v for k,v in report.items() if k!='provenance'}),flush=True)
     report['corpus_pretraining_token_positions']=len(pre)
     report['token_targets']=report_target
+    report['conversation_packing']='v2: retains latest user prompt and masks history; answer truncation does not fabricate EOS'
     start=time.monotonic()
     def save():
         tmp=o/'checkpoint.tmp';torch.save({'model':m.state_dict(),'optimizer':opt.state_dict(),'config':c,'report':report},tmp);tmp.replace(o/'checkpoint.pt')
