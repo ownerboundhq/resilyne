@@ -81,7 +81,8 @@ def generate(model,sp,prompt,device,max_new=80):
         tokens.append(j);out.append(j)
     return sp.decode(out)
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--data',default='research/arc_next/data');ap.add_argument('--out',default='research/arc_next/run');ap.add_argument('--pre-steps',type=int,default=1500);ap.add_argument('--chat-steps',type=int,default=500);ap.add_argument('--width',type=int,default=256);ap.add_argument('--layers',type=int,default=4);ap.add_argument('--context',type=int,default=128);ap.add_argument('--batch',type=int,default=8);ap.add_argument('--vocab',type=int,default=4096);ap.add_argument('--seconds',type=int,default=660);ap.add_argument('--resume');ap.add_argument('--pre-token-target',type=int,default=0);ap.add_argument('--chat-token-target',type=int,default=0);ap.add_argument('--chat-extra-tokens',type=int,default=0,help='Additional supervised assistant tokens in this run, beyond prior cumulative count');args=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument('--data',default='research/arc_next/data');ap.add_argument('--out',default='research/arc_next/run');ap.add_argument('--pre-steps',type=int,default=1500);ap.add_argument('--chat-steps',type=int,default=500);ap.add_argument('--width',type=int,default=256);ap.add_argument('--layers',type=int,default=4);ap.add_argument('--context',type=int,default=128);ap.add_argument('--batch',type=int,default=8);ap.add_argument('--vocab',type=int,default=4096);ap.add_argument('--seconds',type=int,default=660);ap.add_argument('--resume');ap.add_argument('--pre-token-target',type=int,default=0);ap.add_argument('--chat-token-target',type=int,default=0);ap.add_argument('--chat-extra-tokens',type=int,default=0,help='Additional supervised assistant tokens in this run, beyond prior cumulative count');ap.add_argument('--short-answer-mix',type=float,default=0.0);args=ap.parse_args()
+    if not 0<=args.short_answer_mix<=1:ap.error('Short answer mix must be between 0 and 1')
     if args.chat_extra_tokens<0 or args.chat_token_target<0 or args.pre_token_target<0:ap.error('Token targets must be nonnegative')
     if args.chat_extra_tokens and args.chat_steps<=0:ap.error('--chat-extra-tokens requires positive --chat-steps')
     torch.manual_seed(42);torch.set_num_threads(min(4,torch.get_num_threads()));device='cuda' if torch.cuda.is_available() else 'cpu';p=pathlib.Path(args.data);o=pathlib.Path(args.out);o.mkdir(parents=True,exist_ok=True)
@@ -94,7 +95,11 @@ def main():
     trainchat=seqs(read(p/'chat.jsonl'),sp,T);valchat=seqs(read(p/'chat_val.jsonl'),sp,T)
     if min(len(pre),len(pv))<=T:raise ValueError('Not enough pretraining tokens')
     pf=lambda r:prebatch(pre,T,B,r,device);vf=lambda r:prebatch(pv,T,B,r,device)
-    cf=lambda r:chatbatch(trainchat,T,B,r,device);cv=lambda r:chatbatch(valchat,T,B,r,device)
+    shortchat=[(x,y) for x,y in trainchat if y[-1]==sp.eos_id() and 2<=sum(v!=-100 for v in y)<=32]
+    if args.short_answer_mix and len(shortchat)<50:raise RuntimeError('Insufficient complete short answers')
+    print('Complete short-answer training rows:',len(shortchat),flush=True)
+    def cf(r):return chatbatch(shortchat if args.short_answer_mix and r.random()<args.short_answer_mix else trainchat,T,B,r,device)
+    cv=lambda r:chatbatch(valchat,T,B,r,device)
     report={'model':'Arc Next (research candidate)','parameters':sum(x.numel() for x in m.parameters()),'config':c,'device':device,'unique_pretraining_tokens':len(pre),'heldout_pretraining_tokens':len(pv),'conversation_training_rows':len(trainchat),'heldout_conversation_rows':len(valchat),'training_tokens_processed':0,'stages':[],'provenance':json.loads((p/'provenance.json').read_text()) if (p/'provenance.json').exists() else None}
     if args.resume:
         current=report['provenance'];m.load_state_dict(ck['model']);opt.load_state_dict(ck['optimizer']);report=ck['report']
@@ -102,6 +107,8 @@ def main():
     prior_chat_tokens=sum(s['supervised_tokens'] for s in report['stages'] if s['stage']=='chat')
     report_target={'pretrain':args.pre_token_target,'chat':max(args.chat_token_target,prior_chat_tokens+args.chat_extra_tokens) if args.chat_extra_tokens else args.chat_token_target}
     report['requested_additional_chat_tokens']=args.chat_extra_tokens
+    report['short_answer_mix']=args.short_answer_mix
+    report['complete_short_answer_rows']=len(shortchat)
     if not args.resume:report['baseline']={'pretrain_loss':measure(m,vf,100),'chat_loss':measure(m,cv,101)}
     print(json.dumps({k:v for k,v in report.items() if k!='provenance'}),flush=True)
     report['corpus_pretraining_token_positions']=len(pre)

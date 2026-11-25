@@ -50,3 +50,7 @@ python research/arc_next/evaluate_generalization.py research/arc_next/run/checkp
 ```
 
 The wall-clock and step caps can stop before the target. Record actual additional tokens, run qualitative checks, and use fresh evaluation examples rather than training on the previous challenge suite. Preserve the prior artifact before resuming. No automatic promotion or additional hosted compute allocation is implied.
+
+## Corrective alignment test
+
+The five-million-pretraining-token checkpoint passed the token target but received no new assistant training and failed 120/120 strict challenge questions. A single bounded development test resumes that exact checkpoint using corrected prompt-preserving packing and a 65% short-answer batch mixture drawn from existing filtered human conversations. It measures the same fresh generated challenge cases before and after, reports actual additional assistant tokens, and preserves raw results. It is not a production training cluster or a release gate on its own. Any sustained training must move to dedicated compute. No model is deployed automatically.

@@ -1,0 +1,77 @@
+name: Arc Next corrective alignment test
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/arc-next-alignment.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: arc-next-corrective-test
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    env:
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_XET: '1'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: arc-next-million-checkpoint
+          run-id: '45534266609'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: research/arc_next
+      - name: Install and verify
+        run: |
+          pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install datasets==3.6.0 sentencepiece==0.2.1 huggingface_hub==0.32.4
+          python -m py_compile research/arc_next/train.py research/arc_next/inference.py research/arc_next/evaluate_generalization.py
+          echo '81870a78e776c54309bcbc02eeb6289ed32786565af6b8601f0bd903bbffa480  research/arc_next/run/checkpoint.pt' | sha256sum -c -
+          cp research/arc_next/data/provenance.json /tmp/prior-provenance.json
+      - name: Restore exact human dialogue corpus
+        run: python research/arc_next/resume_data.py /tmp/prior-provenance.json research/arc_next/data
+      - name: Measure baseline on fresh questions
+        run: python research/arc_next/evaluate_generalization.py research/arc_next/run/checkpoint.pt --n 10 --seed 2026112507 --out research/arc_next/run/alignment-before.json
+      - name: Bounded conversational packing and alignment test
+        run: |
+          python research/arc_next/train.py --resume research/arc_next/run/checkpoint.pt --pre-steps 0 --chat-steps 650 --chat-extra-tokens 200000 --short-answer-mix 0.65 --seconds 240
+      - name: Evaluate the corrected candidate
+        run: |
+          python research/arc_next/evaluate_generalization.py research/arc_next/run/checkpoint.pt --n 10 --seed 2026112507 --out research/arc_next/run/alignment-after.json
+          python research/arc_next/inference.py research/arc_next/run/checkpoint.pt --prompt "What is your name?"
+          python research/arc_next/inference.py research/arc_next/run/checkpoint.pt --prompt "What is the difference between a lake and a river?"
+      - name: Verify actual conversational updates
+        run: |
+          python - <<'PY'
+          import json
+          p='research/arc_next/run/'
+          r=json.load(open(p+'report.json'));b=json.load(open(p+'alignment-before.json'));a=json.load(open(p+'alignment-after.json'))
+          assert r['actual_stage_tokens']['chat']>437304, 'No conversational updates occurred'
+          print('Additional conversational tokens:',r['actual_stage_tokens']['chat']-437304)
+          print('Exact answers before:',b['correct'],'/',b['total'])
+          print('Exact answers after:',a['correct'],'/',a['total'])
+          print('Research only. A successful workflow is not a quality pass.')
+          PY
+      - name: Preserve research evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arc-next-alignment-test
+          path: |
+            research/arc_next/run/checkpoint.pt
+            research/arc_next/run/tokenizer.model
+            research/arc_next/run/report.json
+            research/arc_next/run/alignment-before.json
+            research/arc_next/run/alignment-after.json
+            research/arc_next/data/provenance.json
+          if-no-files-found: warn
+          retention-days: 30

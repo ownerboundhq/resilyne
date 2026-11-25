@@ -1,0 +1,18 @@
+{
+  "run_id": 45534266609,
+  "artifact_id": 14986493051,
+  "checkpoint_sha256": "81870a78e776c54309bcbc02eeb6289ed32786565af6b8601f0bd903bbffa480",
+  "parameters": 4240896,
+  "pretrain_tokens": 5000192,
+  "chat_tokens": 437304,
+  "total_tokens": 5437496,
+  "additional_chat_steps": 0,
+  "pretraining_validation_loss": 3.99066561460495,
+  "chat_validation_loss": 4.646807477969842,
+  "generalization": {
+    "run_id": 45535679762,
+    "correct": 0,
+    "total": 120
+  },
+  "release_decision": "Do not deploy; continued pretraining without new conversational updates failed compositional tests."
+}
