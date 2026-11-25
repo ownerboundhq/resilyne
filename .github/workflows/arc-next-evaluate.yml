@@ -1,0 +1,67 @@
+name: Arc Next independent evaluation
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/arc-next-evaluate.yml'
+  workflow_run:
+    workflows: ["Arc Next million-token continuation"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      source_run:
+        description: Training run ID
+        required: true
+        default: '45533140718'
+      artifact_name:
+        description: Checkpoint artifact name
+        required: true
+        default: arc-next-research-checkpoint
+permissions:
+  contents: read
+  actions: read
+jobs:
+  evaluate:
+    if: ${{ github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ github.event_name == 'workflow_run' && 'arc-next-million-checkpoint' || inputs.artifact_name || 'arc-next-research-checkpoint' }}
+          run-id: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || inputs.source_run || '45533140718' }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: research/arc_next
+      - name: Install inference dependencies
+        run: |
+          pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install sentencepiece==0.2.1
+          python -m py_compile research/arc_next/train.py research/arc_next/inference.py research/arc_next/evaluate_generalization.py
+      - name: Evaluate randomized unfamiliar questions
+        run: |
+          python research/arc_next/evaluate_generalization.py research/arc_next/run/checkpoint.pt --n 20 --seed 2026112501 --out research/arc_next/run/generalization.json
+          python research/arc_next/inference.py research/arc_next/run/checkpoint.pt --prompt "What is your name?"
+      - name: Write measured results
+        if: success()
+        run: |
+          python - <<'PY'
+          import json,os
+          r=json.load(open('research/arc_next/run/generalization.json'))
+          lines=['## Arc Next compositional evaluation',f"Exact answers: {r['correct']}/{r['total']}",f"Training tokens: {r['training_tokens']}",f"Checkpoint SHA-256: {r['checkpoint_sha256']}"]
+          for k,v in r['categories'].items():lines.append(f"- {k}: {v['correct']}/{v['total']}")
+          lines.append('Synthetic challenge suite only. No general-purpose or safety claim; no automatic deployment.')
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:f.write('\n'.join(lines)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: arc-next-generalization-report
+          path: research/arc_next/run/generalization.json
+          retention-days: 30
