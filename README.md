@@ -46,3 +46,7 @@ Select any installed Ollama model in the chat header. Delete local conversations
 
 ## Neuravale N series (0.5 preview)
 The website brands the Qwen2.5 0.5B, 1.5B and 3B inference profiles as N1 Mini, N1 Compact and N1 respectively. These are runtime profiles, not independently trained or owned model weights. Runtime IDs and original model provenance remain visible in the selector, model catalog, and exported evaluation results. R1, C1, V1, A1 and E1 are research targets only. Website publishing source: main/docs.
+
+
+## Browser CPU compatibility (0.6)
+Chat and Research expose CPU/WebAssembly profiles even without WebGPU. N1 Lite uses SmolLM2 135M Instruct ONNX, N1 Mini CPU uses Qwen2.5 0.5B Instruct ONNX. CPU runs in a worker via Transformers.js 3.8.1, single-threaded, q4; GPU options are discovered separately. CPU responses appear after generation, not token by token. Actual performance depends on browser and memory. No hosted inference or paid API is involved.
