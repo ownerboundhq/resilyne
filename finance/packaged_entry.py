@@ -20,6 +20,9 @@ def main():
         elif mode=="--computer-use":
             from finance.computer_use import main as computer_main
             computer_main()
+        elif mode=="--intelligence":
+            from finance.intelligence import main as intelligence_main
+            intelligence_main()
         elif mode=="--autonomy":
             from finance.autonomy import main as autonomy_main
             autonomy_main()

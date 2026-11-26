@@ -1,4 +1,4 @@
-NEURAVALE FINANCE DESKTOP 0.10.0 - Windows x64 preview
+NEURAVALE FINANCE DESKTOP 0.11.0 - Windows x64 preview
 
 1. Extract ALL files from the ZIP to a folder.
 2. Double-click NeuravaleFinance.exe. Keep the other folders beside it.
@@ -33,3 +33,5 @@ PHYSICAL COMPUTER USE: click Watch physical mouse and keyboard accounting. Start
 V0.9: Open the Office tab and Start accounting team. It seeds daily office and specialist month-end practice records and starts the worker. Review the reports. On Computer use, choose Watch physical mouse and keyboard accounting BEFORE sealing the month; the native operator uses the current unsealed specialist plan and rejects changed or sealed sources. Approve the practice-window input before it starts. The desktop has three tabs (Office, Computer use, Connections). No production data or live accounting writes.
 
 AUTONOMOUS MODE: click Start autonomous practice team and authorize once. Daily reports, scheduled isolated browser correction and exact fictional month-end close run without further prompts while the launcher is open and PC awake. Unresolved discrepancies remain flagged. This mode never controls your real mouse or live accounts.
+
+EXTENDED OFFICE: Autonomous practice mode now adds labelled-text invoices, vendor policy, card/loan/related-party reconciliation, supplied-rate FX, budget variance, tax source worksheets, verification, period rollup checks, local JSON packages and SQLite backups. Open accounting reports folder in Connections. These are practice calculations only; no legal filing, statutory slips, production credentials, general AI control or encrypted backups.

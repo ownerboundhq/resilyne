@@ -15,7 +15,7 @@ class Desktop:
         self.port=8766
         self.worker=None
         self.pilot=None
-        window.title("Neuravale Finance Desktop 0.10.0 | local pilot")
+        window.title("Neuravale Finance Desktop 0.11.0 | local pilot")
         window.geometry("780x690")
         window.minsize(600,560)
         frame=ttk.Frame(window,padding=24)
@@ -50,6 +50,7 @@ class Desktop:
         self.run_btn.pack(fill="x",pady=4)
         ttk.Button(work,text="Generate report in installed Excel",command=self.excel_export).pack(fill="x",pady=4)
         ttk.Button(settings,text="Connect your software (test integrations)",command=self.integrations).pack(fill="x",pady=4)
+        ttk.Button(settings,text="Open accounting reports folder",command=self.open_reports).pack(fill="x",pady=4)
         ttk.Button(settings,text="Open local workspace",command=self.open_workspace).pack(fill="x",pady=4)
         ttk.Label(settings,text="Data and evidence remain on this computer. Test credentials only. No live ledger posting.",wraplength=590).pack(anchor="w",pady=12)
         ttk.Label(frame,textvariable=self.detail,wraplength=610).pack(anchor="w",pady=12)
@@ -85,7 +86,7 @@ class Desktop:
     def start_autonomous(self):
         if self.running(self.worker):
             messagebox.showinfo("Worker running","Stop the current worker before changing mode.");return
-        if not messagebox.askyesno("Authorize fictional autonomy","Run the isolated practice browser daily and automatically seal the exact fictional monthly fixture? No real accounts, payments, tax filing or physical mouse control. The worker runs while this window and computer remain active."):
+        if not messagebox.askyesno("Authorize fictional autonomy","Run the isolated practice browser daily, prepare extended accounting reports and automatically seal the exact fictional monthly fixture? No real accounts, payments, tax filing or physical mouse control. The worker runs while this window and computer remain active."):
             return
         self.start(autonomous=True)
         self.detail.set("Autonomous practice team authorized. Open reports to see progress and exceptions.")
@@ -180,6 +181,14 @@ class Desktop:
             self.detail.set('Office snapshot already exists; not overwritten.')
         except OSError as exc:
             messagebox.showerror('Cannot create sample',str(exc))
+    def open_reports(self):
+        folder=self.workspace/"reports"
+        folder.mkdir(parents=True,exist_ok=True)
+        if sys.platform=="win32":
+            import os
+            os.startfile(str(folder))
+        else:
+            webbrowser.open(folder.as_uri())
     def open_workspace(self):
         if sys.platform=="win32":
             import os

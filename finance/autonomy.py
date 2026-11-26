@@ -119,6 +119,11 @@ def tick(root,today=None,browser=run_browser,at=None):
         prepare_month(root,today)
     except (OSError,ValueError,RuntimeError,KeyError,TypeError):
         set_status(root,"month_end","blocked","Month-end preparation or verification failed; no completion claim.")
+    try:
+        from .intelligence import tick as intelligence_tick
+        intelligence_tick(root,today)
+    except Exception:
+        set_status(root,"intelligence","blocked","Extended task or backup failed; review local workspace.")
     return status(root)
 
 def main():
