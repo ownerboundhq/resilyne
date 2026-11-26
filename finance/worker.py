@@ -230,7 +230,7 @@ def demo(root):
     (folder/"READY").touch()
     return folder
 
-def serve(root, port, interval, browser_demo=False, autonomous_demo=False):
+def serve(root, port, interval, browser_demo=False, autonomous_demo=False, vision_model=None):
     if interval<5:
         raise ValueError("Minimum interval is five seconds")
     stop = threading.Event()
@@ -240,7 +240,7 @@ def serve(root, port, interval, browser_demo=False, autonomous_demo=False):
                 cycle(root)
                 if autonomous_demo and not stop.is_set():
                     from .engine import tick as engine_tick
-                    engine_tick(root)
+                    engine_tick(root,vision_model=vision_model)
                 elif browser_demo and not stop.is_set():
                     from .schedule import browser_tick
                     browser_tick(root)
@@ -298,6 +298,8 @@ def main():
     s.add_argument("--interval",type=int,default=30)
     s.add_argument("--browser-demo",action="store_true",help="Opt in to scheduled fictional browser exports")
     s.add_argument("--autonomous-demo",action="store_true",help="Run authorized autonomous fictional office")
+    from .vision_operator import MODELS
+    s.add_argument("--vision-model",choices=MODELS,help="Use installed local vision model for isolated browser task")
     ack=sub.add_parser("ack")
     ack.add_argument("id",type=int)
     ack.add_argument("--reason",required=True)
@@ -314,7 +316,7 @@ def main():
         acknowledge(root,a.id,a.reason)
         print("Acknowledged; no financial records changed.")
     else:
-        serve(root,a.port,a.interval,a.browser_demo,a.autonomous_demo)
+        serve(root,a.port,a.interval,a.browser_demo,a.autonomous_demo,a.vision_model)
 
 if __name__=="__main__":
     main()

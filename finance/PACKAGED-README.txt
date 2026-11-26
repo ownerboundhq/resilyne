@@ -1,4 +1,4 @@
-NEURAVALE FINANCE DESKTOP 0.12.1 - Windows x64 preview
+NEURAVALE FINANCE DESKTOP 0.13.0 - Windows x64 preview
 
 1. Extract ALL files from the ZIP to a folder.
 2. Double-click NeuravaleFinance.exe. Keep the other folders beside it.
@@ -37,3 +37,5 @@ AUTONOMOUS MODE: click Start autonomous practice team and authorize once. Daily 
 EXTENDED OFFICE: Autonomous practice mode now adds labelled-text invoices, vendor policy, card/loan/related-party reconciliation, supplied-rate FX, budget variance, tax source worksheets, verification, period rollup checks, local JSON packages and SQLite backups. Open accounting reports folder in Connections. These are practice calculations only; no legal filing, statutory slips, production credentials, general AI control or encrypted backups.
 
 INTELLIGENCE ENGINE: Office > Start Intelligence Engine > authorize fictional mode > Open activity and financial reports. Task centre shows assigned roles, queued/running/retry/completed/blocked/needs-review jobs and evidence. Separate execute and verify jobs; close only after verified exact fixture. No general AI or live ledger control. Keep computer awake and launcher open.
+
+LOCAL VISION: separately install Ollama from https://ollama.com/download and run ollama pull gemma3:4b. Start Intelligence Engine with local vision or watch the separate browser task. The third-party model chooses safe actions from screenshots; accounting values and posting remain deterministic and fictional. No model bundled, no cloud fallback. Live inference not tested by release CI.

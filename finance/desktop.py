@@ -15,7 +15,7 @@ class Desktop:
         self.port=8766
         self.worker=None
         self.pilot=None
-        window.title("Neuravale Finance Desktop 0.12.1 | local pilot")
+        window.title("Neuravale Finance Desktop 0.13.0 | local pilot")
         window.geometry("780x690")
         window.minsize(600,560)
         frame=ttk.Frame(window,padding=24)
@@ -36,6 +36,8 @@ class Desktop:
         self.start_btn.pack(fill="x",pady=4)
         self.autonomy_btn=ttk.Button(home,text="Start Intelligence Engine",command=self.start_autonomous)
         self.autonomy_btn.pack(fill="x",pady=4)
+        self.vision_engine_btn=ttk.Button(home,text="Start Intelligence Engine with local vision",command=self.start_vision_engine)
+        self.vision_engine_btn.pack(fill="x",pady=4)
         self.stop_btn=ttk.Button(home,text="Stop background worker",command=self.stop)
         self.stop_btn.pack(fill="x",pady=4)
         ttk.Button(home,text="Open activity and financial reports",command=self.open_dashboard).pack(fill="x",pady=4)
@@ -44,6 +46,8 @@ class Desktop:
         ttk.Checkbutton(home,text="Schedule read-only fictional browser exports every 5 minutes",variable=self.auto).pack(anchor="w",pady=8)
         self.native_btn=ttk.Button(work,text="Watch physical mouse and keyboard accounting",command=self.native_use)
         self.native_btn.pack(fill="x",pady=4)
+        self.vision_btn=ttk.Button(work,text="Watch AI interpret screen and operate practice ledger",command=self.watch_vision)
+        self.vision_btn.pack(fill="x",pady=4)
         self.watch_btn=ttk.Button(work,text="Watch browser accounting workflow",command=self.watch_team)
         self.watch_btn.pack(fill="x",pady=4)
         self.run_btn=ttk.Button(work,text="Run visible browser export pilot",command=self.run_pilot)
@@ -90,11 +94,27 @@ class Desktop:
             return
         self.start(autonomous=True)
         self.detail.set("Intelligence Engine authorized. Open reports to see the live task centre, assigned roles and verification results.")
-    def start(self,autonomous=False):
+    def vision_consent(self):
+        return messagebox.askyesno("Local vision preview","Requires Ollama running locally and gemma3:4b installed separately. Only fictional practice-window screenshots and action choices are sent to localhost. No cloud model, live records, payments or physical Windows cursor. Continue?")
+    def start_vision_engine(self):
+        if self.running(self.worker): return
+        if self.vision_consent():
+            self.start(autonomous=True,vision_model="gemma3:4b")
+            self.detail.set("Model-driven practice mode requested. Open task centre for results; missing local model blocks browser execution.")
+    def watch_vision(self):
+        if self.running(self.pilot): return
+        if not self.vision_consent(): return
+        try:
+            self.pilot=self.spawn("finance.vision_operator",["--workspace",str(self.workspace),"--model","gemma3:4b"],"vision.log")
+            self.detail.set("Local vision operator started. Look for isolated browser; see vision.log and vision_runs for evidence.")
+        except OSError as exc:
+            messagebox.showerror("Cannot launch vision operator",str(exc))
+    def start(self,autonomous=False,vision_model=None):
         if self.running(self.worker): return
         try:
             args=["--workspace",str(self.workspace),"serve","--port",str(self.port)]
             if autonomous: args.append("--autonomous-demo")
+            if autonomous and vision_model: args.extend(["--vision-model",vision_model])
             elif self.auto.get(): args.append("--browser-demo")
             self.worker=self.spawn("finance.worker",args,"worker.log")
         except OSError as exc:
@@ -201,13 +221,15 @@ class Desktop:
         self.state.set("Worker process running · verify heartbeat in dashboard" if working else ("Worker stopped" if self.worker is None else f"Worker exited ({self.worker.returncode}); see worker.log"))
         self.start_btn.configure(state="disabled" if working else "normal")
         self.autonomy_btn.configure(state="disabled" if working else "normal")
+        self.vision_engine_btn.configure(state="disabled" if working else "normal")
         self.stop_btn.configure(state="normal" if working else "disabled")
         self.run_btn.configure(state="disabled" if busy else "normal")
         self.watch_btn.configure(state="disabled" if busy else "normal")
         self.native_btn.configure(state="disabled" if busy else "normal")
+        self.vision_btn.configure(state="disabled" if busy else "normal")
         if self.pilot is not None and not busy:
             code=self.pilot.returncode
-            self.detail.set("Local task finished. Check dashboard or workspace/reports." if code==0 else f"Local task failed ({code}); see computer_use.log, operation.log, browser.log or excel.log.")
+            self.detail.set("Local task finished. Check dashboard or workspace/reports." if code==0 else f"Local task failed ({code}); see vision.log, computer_use.log, operation.log, browser.log or excel.log.")
         self.window.after(1000,self.refresh)
     def close(self):
         if self.running(self.pilot):

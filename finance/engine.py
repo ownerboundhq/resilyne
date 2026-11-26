@@ -54,7 +54,7 @@ def source_hash(path):
     try: return digest(read_limited(path))
     except (OSError,ValueError): return "unavailable"
 
-def plan(root,today):
+def plan(root,today,vision_model=None):
     """Discover due daily, monthly and changed-source work. Stable IDs deduplicate work."""
     previous=today.replace(day=1)-timedelta(days=1)
     period=previous.strftime("%Y-%m")
@@ -81,8 +81,13 @@ def plan(root,today):
         return key
     d=add("daily_prepare",daily["day"],daily)
     add("daily_verify",daily["day"],daily,[d])
-    b=add("browser_execute",daily["day"],{"day":daily["day"],"fixture":"fee-001-v1"})
-    add("browser_verify",daily["day"],{"day":daily["day"],"fixture":"fee-001-v1"},[b])
+    browser_inputs={"day":daily["day"],"fixture":"fee-001-v1"}
+    if vision_model:
+        from .vision_operator import MODELS
+        check(vision_model in MODELS,"Unsupported vision model")
+        browser_inputs["vision_model"]=vision_model
+    b=add("browser_execute",daily["day"],browser_inputs)
+    add("browser_verify",daily["day"],browser_inputs,[b])
     c=add("close_prepare",period,monthly)
     v=add("close_verify",period,monthly,[c])
     s=add("close_seal",period,monthly,[v])
@@ -120,7 +125,7 @@ def claim(root,at):
             if not all(states.get(d)=="completed" for d in deps): continue
             token=uuid.uuid4().hex
             db.execute("UPDATE engine_jobs SET state='running',attempts=attempts+1,token=?,lease_until=?,updated=? WHERE id=?",
-                       (token,at+LEASE_SECONDS,now(),r["id"]))
+                       (token,at+(720 if json.loads(r["inputs"]).get("vision_model") and r["tool"]=="browser_execute" else LEASE_SECONDS),now(),r["id"]))
             job=dict(r);job.update(token=token,attempts=r["attempts"]+1,inputs=json.loads(r["inputs"]),dependencies=deps)
             event(db,"engine_started",None,r["role"]+": "+r["reason"])
             return job
@@ -198,11 +203,17 @@ def run_tool(root,job,today,browser):
             verify_daily(row["report"])
         return "completed",{"report_id":row["id"],"source":i["source"],"verified":tool=="daily_verify"}
     if tool=="browser_execute":
-        r=browser(root)
+        if i.get("vision_model"):
+            r=run_vision(root,i["vision_model"])
+        else:
+            r=browser(root)
         check(isinstance(r.get("batch_id"),str) and r["before"]==2 and r["after"]==1,"Unexpected browser outcome")
-        return "completed",{"batch_id":r["batch_id"],"verified":False}
+        return "completed",{"batch_id":r["batch_id"],"verified":False,**({"model":r["model"],"evidence":r["evidence"],"steps":r["steps"]} if i.get("vision_model") else {})}
     if tool=="browser_verify":
-        key=dependency(root,job)["batch_id"]
+        execution=dependency(root,job)
+        key=execution["batch_id"]
+        if i.get("vision_model"):
+            check(execution.get("model")==i["vision_model"],"Vision model evidence missing")
         with closing(connect(root)) as db,db:
             row=db.execute("SELECT * FROM batches WHERE id=?",(key,)).fetchone()
         check(row and row["state"]=="complete","Saved browser batch unavailable")
@@ -268,9 +279,18 @@ def snapshot(root):
     active=[r for r in rows if r["active"]]
     return {"mode":"fictional-only deterministic orchestration","counts":{state:sum(r["state"]==state for r in active) for state in ("queued","running","retry","completed","needs_review","blocked","failed")},"jobs":rows}
 
-def tick(root,today=None,browser=run_browser,clock=time.time,max_jobs=12):
+def run_vision(root,model):
+    import subprocess
+    from .runtime import command
+    p=subprocess.run(command("finance.vision_operator",["--workspace",str(root),"--model",model,"--headless"]),capture_output=True,text=True,encoding="utf-8",errors="replace",timeout=600)
+    if p.returncode: raise RuntimeError("Local vision operator stopped. Check installed model and vision_runs evidence.")
+    result=json.loads(p.stdout.strip().splitlines()[-1])
+    check(result.get("model")==model and result.get("verified") is True,"Invalid vision result")
+    return result
+
+def tick(root,today=None,browser=run_browser,clock=time.time,max_jobs=12,vision_model=None):
     today=today or date.today()
-    plan(root,today)
+    plan(root,today,vision_model)
     for _ in range(max_jobs):
         job=claim(root,clock())
         if not job: break
@@ -287,6 +307,8 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--workspace",type=Path,required=True)
     p.add_argument("action",choices=["once","status"])
+    from .vision_operator import MODELS
+    p.add_argument("--vision-model",choices=MODELS)
     a=p.parse_args()
-    print(json.dumps(tick(a.workspace) if a.action=="once" else snapshot(a.workspace),indent=2))
+    print(json.dumps(tick(a.workspace,vision_model=a.vision_model) if a.action=="once" else snapshot(a.workspace),indent=2))
 if __name__=="__main__": main()
