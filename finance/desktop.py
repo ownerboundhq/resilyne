@@ -10,12 +10,12 @@ from .runtime import command
 class Desktop:
     def __init__(self, window):
         self.window=window
-        self.workspace=Path.home()/"Neuravale-finance-desktop-demo"
+        self.workspace=Path.home()/"Neuravale-finance-desktop-demo-v06"
         self.workspace.mkdir(parents=True,exist_ok=True)
         self.port=8766
         self.worker=None
         self.pilot=None
-        window.title("Neuravale Finance Desktop 0.5.0 | local pilot")
+        window.title("Neuravale Finance Desktop 0.6.0 | local pilot")
         window.geometry("780x780")
         window.minsize(600,620)
         frame=ttk.Frame(window,padding=24)
@@ -38,7 +38,7 @@ class Desktop:
         self.run_btn=ttk.Button(frame,text="Run visible browser export pilot",command=self.run_pilot)
         self.run_btn.pack(fill="x",pady=3)
         ttk.Button(frame,text="Generate report in installed Excel",command=self.excel_export).pack(fill="x",pady=3)
-        ttk.Button(frame,text="Prepare fictional month-end close",command=self.prepare_close).pack(fill="x",pady=3)
+        ttk.Button(frame,text="Prepare full specialist month-end close",command=self.prepare_close).pack(fill="x",pady=3)
         ttk.Button(frame,text="Review and seal month-end snapshot",command=self.seal_close).pack(fill="x",pady=3)
         ttk.Button(frame,text="Open activity dashboard",command=lambda:webbrowser.open(f"http://127.0.0.1:{self.port}/")).pack(fill="x",pady=3)
         ttk.Button(frame,text="Open local workspace",command=self.open_workspace).pack(fill="x",pady=3)
@@ -99,7 +99,7 @@ class Desktop:
     def prepare_close(self):
         from .month_end import demo
         try:
-            demo(self.workspace)
+            demo(self.workspace,advanced=True)
         except FileExistsError:
             pass
         except OSError as exc:

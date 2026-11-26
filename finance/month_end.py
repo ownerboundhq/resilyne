@@ -22,6 +22,11 @@ def period_dates(period):
     return start,end
 
 def evaluate(data,today):
+    specialists=None
+    if isinstance(data,dict) and "specialists" in data:
+        from .close_specialists import prepare
+        start,end=period_dates(data["period"])
+        data,specialists=prepare(data,start,end)
     strict_keys(data,("company","currency","period","accounts","journal","bank","receivables","payables","checks"))
     if data["company"]!=COMPANY or data["currency"]!="CAD":
         raise ValueError("Pilot only accepts the fictional CAD close company")
@@ -109,6 +114,11 @@ def evaluate(data,today):
     if not isinstance(checks,dict) or set(checks)-set(CHECKS):
         raise ValueError("Unexpected close checklist")
     for name in CHECKS:
+        if specialists is not None:
+            from .close_specialists import SPECIAL_CHECKS
+            if name in SPECIAL_CHECKS:
+                gate(name,True,"Calculated and reconciled from supplied fictional register; see specialist schedules.")
+                continue
         item=checks.get(name)
         ok=False
         detail="Required review evidence missing."
@@ -133,7 +143,7 @@ def evaluate(data,today):
     credits=sum(a["credit_cents"] for a in trial)
     gate("Closing trial balance",debits==credits,"Closing debits equal credits.")
     gate("Balance sheet equation",assets==liabilities+equity+profit,"Assets = liabilities + opening/other equity + current month earnings.")
-    return {"company":COMPANY,"period":data["period"],"gates":gates,"ready":all(g["passed"] for g in gates),
+    return {"specialists":specialists,"company":COMPANY,"period":data["period"],"gates":gates,"ready":all(g["passed"] for g in gates),
             "trial_balance":trial,"debits_cents":debits,"credits_cents":credits,
             "income_statement":{"revenue_cents":rev,"expenses_cents":exp,"net_income_cents":profit},
             "balance_sheet":{"assets_cents":assets,"liabilities_cents":liabilities,"equity_excluding_month_income_cents":equity,"month_income_cents":profit,"total_equity_cents":equity+profit},
@@ -230,7 +240,7 @@ def latest(root):
         result.append(d)
     return result
 
-def demo(root,today=None,blocked=False):
+def demo(root,today=None,blocked=False,advanced=False):
     today=today or date.today()
     end=today.replace(day=1)-timedelta(days=1)
     start=end.replace(day=1)
@@ -249,6 +259,10 @@ def demo(root,today=None,blocked=False):
           "receivables":[{"id":"INV1","open_cents":120000,"evidence":"fictional invoice"}],
           "payables":[{"id":"BILL1","open_cents":45000,"evidence":"fictional bill"}],
           "checks":{k:{"status":"reviewed" if k=="cutoff" else "not_applicable","evidence":"Fictional scenario: "+k+" reviewed or no applicable transactions"} for k in CHECKS}}
+    if advanced:
+        from .close_specialists import advanced_sample
+        data=advanced_sample(data)
+        if blocked: data["bank"]["closing_cents"]-=1
     folder=root/"month_end";folder.mkdir(parents=True,exist_ok=True)
     path=folder/(period+".json")
     with path.open("x",encoding="utf-8") as f: json.dump(data,f,indent=2)
@@ -258,12 +272,12 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--workspace",type=Path,required=True)
     sub=p.add_subparsers(dest="action",required=True)
-    d=sub.add_parser("demo");d.add_argument("--blocked",action="store_true")
+    d=sub.add_parser("demo");d.add_argument("--blocked",action="store_true");d.add_argument("--advanced",action="store_true")
     sub.add_parser("once")
     sub.add_parser("status")
     s=sub.add_parser("seal");s.add_argument("period");s.add_argument("fingerprint")
     a=p.parse_args()
-    if a.action=="demo": print(demo(a.workspace,blocked=a.blocked))
+    if a.action=="demo": print(demo(a.workspace,blocked=a.blocked,advanced=a.advanced))
     elif a.action=="once": tick(a.workspace);print(json.dumps(latest(a.workspace),indent=2))
     elif a.action=="status": print(json.dumps(latest(a.workspace),indent=2))
     else: print(seal(a.workspace,a.period,a.fingerprint))
