@@ -2,7 +2,7 @@
 import sys
 
 def command(module, args):
-    allowed={"finance.worker":"--worker","finance.browser_pilot":"--browser","finance.office":"--office","finance.operation":"--operation"}
+    allowed={"finance.worker":"--worker","finance.browser_pilot":"--browser","finance.office":"--office","finance.operation":"--operation","finance.computer_use":"--computer-use"}
     if module not in allowed:
         raise ValueError("Unsupported finance child process")
     if getattr(sys,"frozen",False):

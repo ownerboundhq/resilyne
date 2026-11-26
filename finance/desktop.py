@@ -15,7 +15,7 @@ class Desktop:
         self.port=8766
         self.worker=None
         self.pilot=None
-        window.title("Neuravale Finance Desktop 0.7.0 | local pilot")
+        window.title("Neuravale Finance Desktop 0.8.0 | local pilot")
         window.geometry("780x820")
         window.minsize(600,620)
         frame=ttk.Frame(window,padding=24)
@@ -31,6 +31,8 @@ class Desktop:
         ttk.Button(frame,text="Create fictional financial office data",command=self.seed_office).pack(fill="x",pady=3)
         self.watch_btn=ttk.Button(frame,text="Start team and watch accounting workflow",command=self.watch_team)
         self.watch_btn.pack(fill="x",pady=5)
+        self.native_btn=ttk.Button(frame,text="Watch physical mouse and keyboard accounting",command=self.native_use)
+        self.native_btn.pack(fill="x",pady=5)
         self.start_btn=ttk.Button(frame,text="Start local accounting worker",command=self.start)
         self.start_btn.pack(fill="x",pady=3)
         self.stop_btn=ttk.Button(frame,text="Stop worker",command=self.stop)
@@ -78,6 +80,16 @@ class Desktop:
             self.detail.set("Watch the team open a practice ledger, reconcile, enter an allowed adjustment and verify it.")
         except OSError as exc:
             messagebox.showerror("Cannot start practice operation",str(exc))
+    def native_use(self):
+        if self.running(self.pilot): return
+        if sys.platform!="win32":
+            messagebox.showinfo("Windows required","The physical-input engine currently requires Windows.")
+            return
+        try:
+            self.pilot=self.spawn("finance.computer_use",["--workspace",str(self.workspace)],"computer_use.log")
+            self.detail.set("Open the practice window and select Start. Escape or move the mouse to stop.")
+        except OSError as exc:
+            messagebox.showerror("Cannot start computer-use pilot",str(exc))
     def run_pilot(self):
         if self.running(self.pilot): return
         try:
@@ -146,9 +158,10 @@ class Desktop:
         self.stop_btn.configure(state="normal" if working else "disabled")
         self.run_btn.configure(state="disabled" if busy else "normal")
         self.watch_btn.configure(state="disabled" if busy else "normal")
+        self.native_btn.configure(state="disabled" if busy else "normal")
         if self.pilot is not None and not busy:
             code=self.pilot.returncode
-            self.detail.set("Local task finished. Check dashboard or workspace/reports." if code==0 else f"Local task failed ({code}); see operation.log, browser.log or excel.log.")
+            self.detail.set("Local task finished. Check dashboard or workspace/reports." if code==0 else f"Local task failed ({code}); see computer_use.log, operation.log, browser.log or excel.log.")
         self.window.after(1000,self.refresh)
     def close(self):
         if self.running(self.pilot):
