@@ -5,6 +5,7 @@ import tkinter as tk
 import webbrowser
 from pathlib import Path
 from tkinter import messagebox, ttk
+from .runtime import command
 
 class Desktop:
     def __init__(self, window):
@@ -14,7 +15,7 @@ class Desktop:
         self.port=8766
         self.worker=None
         self.pilot=None
-        window.title("Neuravale Finance Desktop | local pilot")
+        window.title("Neuravale Finance Desktop 0.3.1 | local pilot")
         window.geometry("760x650")
         window.minsize(600,540)
         frame=ttk.Frame(window,padding=24)
@@ -44,7 +45,7 @@ class Desktop:
     def spawn(self, module, args, log_name):
         flags=getattr(subprocess,"CREATE_NO_WINDOW",0)
         with (self.workspace/log_name).open("ab") as log:
-            return subprocess.Popen([sys.executable,"-u","-m",module,*args],stdout=log,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL,creationflags=flags)
+            return subprocess.Popen(command(module,args),stdout=log,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL,creationflags=flags)
     @staticmethod
     def running(proc):
         return proc is not None and proc.poll() is None
@@ -74,8 +75,10 @@ class Desktop:
             messagebox.showinfo("Task running","Wait for the current browser or Excel task to finish.")
             return
         try:
+            args=["powershell.exe","-NoProfile","-File",str(Path(__file__).with_name("excel_export.ps1")),"-Workspace",str(self.workspace)]
+            if getattr(sys,"frozen",False): args.extend(["-FinanceExecutable",sys.executable])
             with (self.workspace/"excel.log").open("ab") as log:
-                self.pilot=subprocess.Popen(["powershell.exe","-NoProfile","-File",str(Path(__file__).with_name("excel_export.ps1")),"-Workspace",str(self.workspace)],stdout=log,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL,creationflags=getattr(subprocess,"CREATE_NO_WINDOW",0))
+                self.pilot=subprocess.Popen(args,stdout=log,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL,creationflags=getattr(subprocess,"CREATE_NO_WINDOW",0))
             self.detail.set("Excel report started. Requires installed Excel.")
         except OSError as exc:
             messagebox.showerror("Cannot start Excel",str(exc))

@@ -1,16 +1,21 @@
 # Excel desktop automation: creates a NEW workbook from the local pilot's verified report.
 # Does not attach to a user's existing Excel session or modify existing workbooks.
-param([string]$Workspace = (Join-Path $HOME "Neuravale-finance-desktop-demo"))
+param([string]$Workspace = (Join-Path $HOME "Neuravale-finance-desktop-demo"), [string]$FinanceExecutable = "")
 $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent $PSScriptRoot
 $python = Join-Path $repo ".venv\Scripts\python.exe"
-if (-not (Test-Path -LiteralPath $python)) { throw "Python environment missing." }
-Push-Location -LiteralPath $repo
-try {
-    $json = & $python -m finance.office --workspace $Workspace status
-    if ($LASTEXITCODE -ne 0) { throw "Cannot read office report." }
-    $snapshot = ($json -join [Environment]::NewLine) | ConvertFrom-Json
-} finally { Pop-Location }
+if ($FinanceExecutable) {
+    $json = & $FinanceExecutable --office --workspace $Workspace status
+    if ($LASTEXITCODE -ne 0) { throw "Cannot read packaged office report." }
+} else {
+    if (-not (Test-Path -LiteralPath $python)) { throw "Python environment missing." }
+    Push-Location -LiteralPath $repo
+    try {
+        $json = & $python -m finance.office --workspace $Workspace status
+        if ($LASTEXITCODE -ne 0) { throw "Cannot read office report." }
+    } finally { Pop-Location }
+}
+$snapshot = ($json -join [Environment]::NewLine) | ConvertFrom-Json
 if ($null -eq $snapshot -or $snapshot.state -ne "complete") { throw "No successful office report. Generate fictional data and let the worker process it first." }
 $r = $snapshot.report
 $folder = Join-Path $Workspace "reports"

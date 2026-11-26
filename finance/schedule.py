@@ -5,6 +5,7 @@ import time
 import uuid
 from contextlib import closing
 from .worker import connect,event
+from .runtime import command
 
 def schema(db):
     db.execute("""CREATE TABLE IF NOT EXISTS schedules(
@@ -39,7 +40,7 @@ def browser_tick(root):
     if not token:
         return False
     try:
-        result=subprocess.run([sys.executable,"-m","finance.browser_pilot","--workspace",str(root),"--headless"],capture_output=True,text=True,encoding="utf-8",errors="replace",timeout=90)
+        result=subprocess.run(command("finance.browser_pilot",["--workspace",str(root),"--headless"]),capture_output=True,text=True,encoding="utf-8",errors="replace",timeout=90)
         ok=result.returncode==0
         detail=(result.stdout if ok else result.stderr).strip()[-500:]
     except (OSError,subprocess.TimeoutExpired) as exc:
