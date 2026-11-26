@@ -15,7 +15,7 @@ class Desktop:
         self.worker=None
         self.pilot=None
         window.title("Neuravale Finance Desktop | local pilot")
-        window.geometry("760x600")
+        window.geometry("760x650")
         window.minsize(600,540)
         frame=ttk.Frame(window,padding=24)
         frame.pack(fill="both",expand=True)
@@ -34,6 +34,7 @@ class Desktop:
         self.stop_btn.pack(fill="x",pady=3)
         self.run_btn=ttk.Button(frame,text="Run visible browser export pilot",command=self.run_pilot)
         self.run_btn.pack(fill="x",pady=3)
+        ttk.Button(frame,text="Generate report in installed Excel",command=self.excel_export).pack(fill="x",pady=3)
         ttk.Button(frame,text="Open activity dashboard",command=lambda:webbrowser.open(f"http://127.0.0.1:{self.port}/")).pack(fill="x",pady=3)
         ttk.Button(frame,text="Open local workspace",command=self.open_workspace).pack(fill="x",pady=3)
         ttk.Label(frame,textvariable=self.detail,wraplength=610).pack(anchor="w",pady=12)
@@ -65,6 +66,19 @@ class Desktop:
             self.detail.set("Browser task started; look for the separate Chromium window.")
         except OSError as exc:
             messagebox.showerror("Cannot start browser task",str(exc))
+    def excel_export(self):
+        if sys.platform!="win32":
+            messagebox.showinfo("Windows required","This pilot uses Microsoft Excel desktop automation on Windows.")
+            return
+        if self.running(self.pilot):
+            messagebox.showinfo("Task running","Wait for the current browser or Excel task to finish.")
+            return
+        try:
+            with (self.workspace/"excel.log").open("ab") as log:
+                self.pilot=subprocess.Popen(["powershell.exe","-NoProfile","-File",str(Path(__file__).with_name("excel_export.ps1")),"-Workspace",str(self.workspace)],stdout=log,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL,creationflags=getattr(subprocess,"CREATE_NO_WINDOW",0))
+            self.detail.set("Excel report started. Requires installed Excel.")
+        except OSError as exc:
+            messagebox.showerror("Cannot start Excel",str(exc))
     def seed_office(self):
         from .office import demo
         try:
@@ -89,11 +103,11 @@ class Desktop:
         self.run_btn.configure(state="disabled" if busy else "normal")
         if self.pilot is not None and not busy:
             code=self.pilot.returncode
-            self.detail.set("Browser pilot finished. Check the dashboard for captured evidence." if code==0 else f"Browser pilot failed ({code}); see browser.log.")
+            self.detail.set("Local task finished. Check dashboard or workspace/reports." if code==0 else f"Local task failed ({code}); see browser.log or excel.log.")
         self.window.after(1000,self.refresh)
     def close(self):
         if self.running(self.pilot):
-            messagebox.showinfo("Browser task running","Wait until the browser pilot finishes before closing.")
+            messagebox.showinfo("Local task running","Wait until the browser or Excel task finishes before closing.")
             return
         self.stop()
         self.window.destroy()
