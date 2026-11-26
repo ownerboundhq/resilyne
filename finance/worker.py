@@ -18,7 +18,7 @@ from pathlib import Path
 ROLES = {
     "Bookkeeper": "Implemented: exact-reference reconciliation (CAD CSV)",
     "Controller": "Implemented: exception queue and evidence review",
-    "Accountant": "Implemented pilot: balanced journal and trial balance",
+    "Accountant": "Implemented pilot: trial balance, monthly statements and close checklist",
     "Tax specialist": "Implemented pilot: supplied deadline monitoring; returns planned",
     "AR specialist": "Implemented pilot: open receivable aging",
     "AP specialist": "Implemented pilot: open payable aging",
@@ -175,6 +175,8 @@ def cycle(root):
         pass
     from .office import tick as office_tick
     office_tick(root)
+    from .month_end import tick as close_tick
+    close_tick(root)
     with closing(connect(root)) as db, db:
         db.execute("INSERT OR REPLACE INTO runtime VALUES('last_cycle',?)",(now(),))
 
@@ -202,7 +204,8 @@ def snapshot(root):
     for f in findings:
         f["evidence"] = json.loads(f["evidence"])
     from .office import latest
-    return {"office":latest(root),"roles":ROLES,"counts":counts,"last_cycle":heartbeat[0] if heartbeat else None,
+    from .month_end import latest as close_latest
+    return {"month_end":close_latest(root),"office":latest(root),"roles":ROLES,"counts":counts,"last_cycle":heartbeat[0] if heartbeat else None,
             "batches":batches,"findings":findings,"activity":activity}
 
 def demo(root):

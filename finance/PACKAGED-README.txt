@@ -1,4 +1,4 @@
-NEURAVALE FINANCE DESKTOP 0.4.0 - Windows x64 preview
+NEURAVALE FINANCE DESKTOP 0.5.0 - Windows x64 preview
 
 1. Extract ALL files from the ZIP to a folder.
 2. Double-click NeuravaleFinance.exe. Keep the other folders beside it.
@@ -21,3 +21,5 @@ This is a fictional-data pilot, not a licensed accounting service.
 No live QuickBooks/Wave/Sage/Shopify connections, payments, payroll, tax filing, general AI
 computer use or Neuravale model inference are enabled. Do not enter real financial data.
 No third-party AI API is required. The browser fixture is local.
+
+MONTH END: Click Prepare fictional month-end close. Open dashboard, review the checks and statements. Click Review and seal month-end snapshot only after review. This only seals a local fictional snapshot; no live books are closed.

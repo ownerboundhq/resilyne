@@ -15,8 +15,8 @@ class Desktop:
         self.port=8766
         self.worker=None
         self.pilot=None
-        window.title("Neuravale Finance Desktop 0.4.0 | local pilot")
-        window.geometry("780x720")
+        window.title("Neuravale Finance Desktop 0.5.0 | local pilot")
+        window.geometry("780x780")
         window.minsize(600,620)
         frame=ttk.Frame(window,padding=24)
         frame.pack(fill="both",expand=True)
@@ -38,6 +38,8 @@ class Desktop:
         self.run_btn=ttk.Button(frame,text="Run visible browser export pilot",command=self.run_pilot)
         self.run_btn.pack(fill="x",pady=3)
         ttk.Button(frame,text="Generate report in installed Excel",command=self.excel_export).pack(fill="x",pady=3)
+        ttk.Button(frame,text="Prepare fictional month-end close",command=self.prepare_close).pack(fill="x",pady=3)
+        ttk.Button(frame,text="Review and seal month-end snapshot",command=self.seal_close).pack(fill="x",pady=3)
         ttk.Button(frame,text="Open activity dashboard",command=lambda:webbrowser.open(f"http://127.0.0.1:{self.port}/")).pack(fill="x",pady=3)
         ttk.Button(frame,text="Open local workspace",command=self.open_workspace).pack(fill="x",pady=3)
         ttk.Label(frame,textvariable=self.detail,wraplength=610).pack(anchor="w",pady=12)
@@ -94,6 +96,29 @@ class Desktop:
             self.detail.set("Excel report started. Requires installed Excel.")
         except OSError as exc:
             messagebox.showerror("Cannot start Excel",str(exc))
+    def prepare_close(self):
+        from .month_end import demo
+        try:
+            demo(self.workspace)
+        except FileExistsError:
+            pass
+        except OSError as exc:
+            messagebox.showerror("Cannot create close sample",str(exc)); return
+        self.start()
+        self.detail.set("Month-end sample ready. Background worker will prepare reports; open dashboard to review.")
+    def seal_close(self):
+        from .month_end import latest,seal
+        try:
+            rows=latest(self.workspace)
+            if not rows or rows[0]["state"]!="ready":
+                messagebox.showinfo("Close not ready","Review month-end checklist in the dashboard first.")
+                return
+            r=rows[0]
+            if messagebox.askyesno("Seal fictional month",f"Seal local snapshot {r['period']}? Review the dashboard first. No external accounting software is changed."):
+                seal(self.workspace,r["period"],r["id"])
+                self.detail.set("Fictional month sealed locally. Original snapshot preserved.")
+        except (OSError,ValueError) as exc:
+            messagebox.showerror("Cannot seal month",str(exc))
     def seed_office(self):
         from .office import demo
         try:
