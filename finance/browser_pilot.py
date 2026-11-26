@@ -42,6 +42,8 @@ def browser_pilot(root, headless=False):
         key = submit(root,folder)
         with closing(connect(root)) as db, db:
             event(db,"browser_export",key,"Local browser clicked both fictional accounting export buttons; verified CSV inputs")
+        # Source bytes are already durably stored in SQLite; do not accumulate identical exports every five minutes.
+        shutil.rmtree(folder)
         cycle(root)
         return key
     except BaseException:

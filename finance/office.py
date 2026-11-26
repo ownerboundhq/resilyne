@@ -135,7 +135,10 @@ def tick(root,today=None):
     source=root/"office.json"
     if not source.exists():
         return None
-    raw=read_limited(source)
+    try:
+        raw=read_limited(source)
+    except (OSError,ValueError) as exc:
+        raw=("UNREADABLE: "+str(exc)).encode("utf-8")
     key=hashlib.sha256(today.isoformat().encode()+b"\0"+raw).hexdigest()
     with closing(connect(root)) as db, db:
         schema(db)
@@ -144,7 +147,7 @@ def tick(root,today=None):
             return key
         try:
             report=calculate(json.loads(raw.decode("utf-8-sig"),object_pairs_hook=reject_duplicate_keys),today)
-        except (ValueError,TypeError,RecursionError) as exc:
+        except (ValueError,TypeError,KeyError,AttributeError,OverflowError,RecursionError) as exc:
             db.execute("INSERT INTO office_reports VALUES(?,?,?,'failed',NULL,?,?)",(key,today.isoformat(),raw,str(exc),now()))
             event(db,"office_failed",None,str(exc))
         else:
@@ -159,6 +162,20 @@ def latest(root):
     if row is None:
         return None
     result=dict(row)
+    try:
+        raw=read_limited(root/"office.json")
+        current=hashlib.sha256(result["as_at"].encode()+b"\0"+raw).hexdigest()
+    except (OSError,ValueError):
+        result.update(state="source_unavailable",report=None,error="Source snapshot is missing or unreadable.")
+        return result
+    if current!=result["id"]:
+        with closing(connect(root)) as db, db:
+            known=db.execute("SELECT id,as_at,state,report,error,created FROM office_reports WHERE id=?",(current,)).fetchone()
+        if known:
+            result=dict(known)
+        else:
+            result.update(state="pending_recheck",report=None,error="Source changed; waiting for worker.")
+            return result
     if result["report"]:
         result["report"]=json.loads(result["report"])
     return result

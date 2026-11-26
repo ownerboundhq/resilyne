@@ -56,14 +56,19 @@ def expected_journals():
         data=json.loads((root/"month_end"/(period+".json")).read_text(encoding="utf-8"))
         report=evaluate(data,date.today())
     if not report["ready"]: raise RuntimeError("Practice close did not pass")
+    return journal_rows(report["specialists"]["adjustments"]["generated_journals"])
+
+def journal_rows(journals):
     rows=[]
-    for j in report["specialists"]["adjustments"]["generated_journals"]:
+    for j in journals:
         dr,cr=j["lines"]
         amount=dr["debit_cents"]
         if amount!=cr["credit_cents"] or amount<=0:
             raise RuntimeError("Unbalanced adjustment")
         rows.append((dr["account"],cr["account"],f"{amount//100}.{amount%100:02d}"))
-    if len(rows)!=4: raise RuntimeError("Unexpected fixture schedule")
+    if len(rows)!=4: raise RuntimeError("This visual pilot supports exactly four adjustment journals")
+    allowed={("cogs","inventory"),("accrual_exp","accrual"),("prepaid_exp","prepaid"),("dep_exp","accum_dep")}
+    if {r[:2] for r in rows}!=allowed: raise RuntimeError("Unexpected fictional journal accounts")
     return rows
 
 def verify_saved(path,expected):
@@ -106,6 +111,7 @@ class WinInput:
         u.SendInput.argtypes=[wintypes.UINT,ctypes.POINTER(Input),ctypes.c_int]
         u.SendInput.restype=wintypes.UINT
         self.guard()
+        self.last=self.cursor()
 
     def cursor(self):
         p=wintypes.POINT()
@@ -115,6 +121,8 @@ class WinInput:
     def guard(self,check_motion=True):
         u=self.u
         if u.GetAsyncKeyState(0x1B)&0x8000: raise RuntimeError("Emergency stop: Escape")
+        if any(u.GetAsyncKeyState(k)&0x8000 for k in (0x10,0x11,0x12,0x5B,0x5C)):
+            raise RuntimeError("Modifier key pressed; stopped")
         if u.GetForegroundWindow()!=self.hwnd: raise RuntimeError("Practice window lost foreground; stopped")
         pid=wintypes.DWORD()
         u.GetWindowThreadProcessId(self.hwnd,ctypes.byref(pid))
@@ -186,10 +194,17 @@ def run_window(workspace):
     root.configure(bg="#f3f5f8")
     root.geometry("750x520+30+40")
     root.resizable(False,False)
-    expected=expected_journals()
+    from .month_end import current_plan
+    plan_id,period,journals=current_plan(workspace)
+    expected=journal_rows(journals)
     out=workspace/"computer_use"
     out.mkdir(parents=True,exist_ok=True)
     run=Path(tempfile.mkdtemp(prefix="journal-",dir=out))
+    (run/"plan.json").write_text(json.dumps({"period":period,"close_id":plan_id,"journals":journals},indent=2),encoding="utf-8")
+    def check_plan():
+        current_id,current_period,current_journals=current_plan(workspace,period)
+        if current_id!=plan_id or current_period!=period or current_journals!=journals:
+            raise RuntimeError("Month-end source changed; workflow stopped")
     fields=[]
     state={"active":False,"driver":None,"index":0,"stage":"click","posted":False,"done":False,"trace":[]}
     status=tk.StringVar(value="Ready. Select Start to permit this one fictional desktop workflow.")
@@ -225,6 +240,8 @@ def run_window(workspace):
     def post():
         if not state["active"] or state["posted"] or state["stage"]!="post_verify":
             return
+        try: check_plan()
+        except (ValueError,RuntimeError,OSError) as exc: stop(str(exc));return
         actual=[tuple(f.get() for f in fields[i:i+3]) for i in range(0,len(fields),3)]
         if actual!=expected:
             stop("Practice ledger refused unexpected entries.");return
@@ -264,14 +281,15 @@ def run_window(workspace):
                 note("Clicked Post fictional journals")
             else:
                 if not state["posted"]: raise RuntimeError("Practice posting did not complete")
+                check_plan()
                 verify_saved(run/"posted_journals.csv",expected)
-                note("Verified all four journals. Desktop workflow complete.")
+                note("Verified all four journals for "+period+". Desktop workflow complete.")
                 shot,_,_=driver.capture();shot.save(run/"02-verified.png")
-                state["done"]=True;state["active"]=False
                 from .worker import connect,event
                 from contextlib import closing
                 with closing(connect(workspace)) as db, db:
-                    event(db,"native_computer_use_verified",None,"Four fictional month-end adjustments entered with physical Windows input; CSV verified in "+run.name)
+                    event(db,"native_computer_use_verified",None,"Four fictional month-end adjustments entered with physical Windows input; close "+plan_id+"; evidence "+run.name)
+                state["done"]=True;state["active"]=False
                 return
             root.after(600,step)
         except Exception as exc:
@@ -289,6 +307,7 @@ def run_window(workspace):
         root.after(500,begin)
     def begin():
         try:
+            check_plan()
             root.update_idletasks()
             user32=ctypes.windll.user32
             user32.GetAncestor.argtypes=[wintypes.HWND,wintypes.UINT]

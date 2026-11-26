@@ -19,10 +19,10 @@ ROLES = {
     "Bookkeeper": "Implemented: exact-reference reconciliation (CAD CSV)",
     "Controller": "Implemented: exception queue and evidence review",
     "Accountant": "Implemented pilot: trial balance, monthly statements and close checklist",
-    "Tax specialist": "Implemented pilot: supplied deadline monitoring; returns planned",
+    "Tax specialist": "Implemented pilot: GST/HST reconciliation and deadline monitoring; returns planned",
     "AR specialist": "Implemented pilot: open receivable aging",
     "AP specialist": "Implemented pilot: open payable aging",
-    "Payroll specialist": "Planned: payroll",
+    "Payroll specialist": "Implemented pilot: payroll register and remittance reconciliation; statutory calculation planned",
     "Audit specialist": "Implemented pilot: journal balance and input fingerprint; not assurance",
     "Treasury specialist": "Implemented pilot: 30-day scheduled cash projection",
 }
@@ -174,9 +174,15 @@ def cycle(root):
     while process_one(root):
         pass
     from .office import tick as office_tick
-    office_tick(root)
     from .month_end import tick as close_tick
-    close_tick(root)
+    for name,task in (("office",office_tick),("month_end",close_tick)):
+        try:
+            task(root)
+        except (OSError,ValueError,TypeError,KeyError,AttributeError,OverflowError,RecursionError) as exc:
+            with closing(connect(root)) as db, db:
+                detail=name+": "+str(exc)
+                if not db.execute("SELECT 1 FROM activity WHERE event='module_error' AND detail=?",(detail,)).fetchone():
+                    event(db,"module_error",None,detail)
     with closing(connect(root)) as db, db:
         db.execute("INSERT OR REPLACE INTO runtime VALUES('last_cycle',?)",(now(),))
 

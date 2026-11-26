@@ -192,7 +192,7 @@ def tick(root,today=None):
                         raise ValueError("Snapshot period must match filename")
                     report=evaluate(data,today)
                     state="ready" if report["ready"] else "blocked"
-                except (ValueError,TypeError,RecursionError) as exc:
+                except (ValueError,TypeError,KeyError,AttributeError,OverflowError,RecursionError) as exc:
                     error=str(exc)
                     # Future periods are retried when eligible instead of being permanently blocked.
                     try:
@@ -226,19 +226,53 @@ def seal(root,period,expected):
     return key
 
 def latest(root):
+    """Show current source, never a superseded ready report; preserve sealed history."""
     with closing(connect(root)) as db, db:
         schema(db)
         rows=db.execute("""SELECT r.id,r.period,r.state,r.report,r.error,r.created,s.run_id AS sealed_id,s.sealed_at
              FROM month_close_runs r LEFT JOIN month_close_seals s ON s.period=r.period
              WHERE r.rowid IN (SELECT max(rowid) FROM month_close_runs GROUP BY period)
              ORDER BY r.period DESC LIMIT 24""").fetchall()
-    result=[]
-    for row in rows:
-        d=dict(row)
-        d["report"]=json.loads(d["report"]) if d["report"] else None
-        if d["id"]==d["sealed_id"]: d["state"]="sealed"
-        result.append(d)
+        result=[]
+        for row in rows:
+            d=dict(row)
+            period=d["period"]
+            try:
+                raw=read_limited(root/"month_end"/(period+".json"))
+                current=hashlib.sha256(period.encode()+b"\0"+raw).hexdigest()
+            except (OSError,ValueError):
+                current=None
+            if current and current!=d["id"]:
+                known=db.execute("""SELECT r.id,r.period,r.state,r.report,r.error,r.created,s.run_id AS sealed_id,s.sealed_at
+                  FROM month_close_runs r LEFT JOIN month_close_seals s ON s.period=r.period
+                  WHERE r.id=? AND r.period=?""",(current,period)).fetchone()
+                if known: d=dict(known)
+            if current is None:
+                d.update(state="source_unavailable",report=None,error="Source snapshot is missing or unreadable; do not use historical reports as current.")
+            elif d["sealed_id"] and current!=d["sealed_id"]:
+                d.update(state="sealed_conflict",report=None,error="Current source differs from sealed snapshot; review required.")
+            elif current!=d["id"]:
+                d.update(state="pending_recheck",report=None,error="Source changed; worker must re-evaluate before approval.")
+            elif d["id"]==d["sealed_id"]:
+                d["state"]="sealed"
+            d["report"]=json.loads(d["report"]) if d["report"] else None
+            result.append(d)
     return result
+
+def current_plan(root,period=None):
+    """Return the verified, unsealed specialist plan for the current source."""
+    rows=latest(root)
+    row=next((r for r in rows if period is None or r["period"]==period),None)
+    if not row or row["state"]!="ready" or not row["report"] or not row["report"].get("specialists"):
+        raise ValueError("Prepare an unsealed specialist month-end snapshot and resolve every blocking check first.")
+    # Recalculate against current bytes, not a cached report alone.
+    raw=read_limited(root/"month_end"/(row["period"]+".json"))
+    if hashlib.sha256(row["period"].encode()+b"\0"+raw).hexdigest()!=row["id"]:
+        raise ValueError("Close snapshot changed; prepare it again.")
+    report=evaluate(json.loads(raw.decode("utf-8-sig"),object_pairs_hook=reject_duplicate_keys),date.today())
+    if not report["ready"] or report!=row["report"]:
+        raise ValueError("Close calculation changed; review required.")
+    return row["id"],row["period"],report["specialists"]["adjustments"]["generated_journals"]
 
 def demo(root,today=None,blocked=False,advanced=False):
     today=today or date.today()

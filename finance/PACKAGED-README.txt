@@ -1,4 +1,4 @@
-NEURAVALE FINANCE DESKTOP 0.8.0 - Windows x64 preview
+NEURAVALE FINANCE DESKTOP 0.9.0 - Windows x64 preview
 
 1. Extract ALL files from the ZIP to a folder.
 2. Double-click NeuravaleFinance.exe. Keep the other folders beside it.
@@ -29,3 +29,5 @@ The full specialist demo calculates FIFO COGS, reconciles payroll and GST/HST, a
 INTEGRATIONS: click Connect your software (test integrations). Four session-only API sample readers are implemented; test credentials required. Other catalog items remain planned. No automatic posting or ongoing API sync.
 
 PHYSICAL COMPUTER USE: click Watch physical mouse and keyboard accounting. Start and approve inside the practice window. Watch the real mouse enter the four calculated journals. Escape, moving the mouse or switching windows stops. Keep the window fully visible on the primary monitor. Restricted fictional fixture only; no arbitrary application control. Physical interactive behavior must be tested on your laptop.
+
+V0.9: Open the Office tab and Start accounting team. It seeds daily office and specialist month-end practice records and starts the worker. Review the reports. On Computer use, choose Watch physical mouse and keyboard accounting BEFORE sealing the month; the native operator uses the current unsealed specialist plan and rejects changed or sealed sources. Approve the practice-window input before it starts. The desktop has three tabs (Office, Computer use, Connections). No production data or live accounting writes.
