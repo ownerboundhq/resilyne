@@ -25,6 +25,7 @@ jobs:
           python -m pip install -r finance/requirements-desktop.txt pyinstaller==6.16.0
           python -m playwright install chromium
       # Rebuild with regression test scoped to the monthly package, not extended reports.
+      # Include cross-plan lease and exact browser evidence regression tests.
       - name: Run source tests
         run: python -m unittest discover -s tests -p "test_finance*.py" -v
       - name: Package desktop

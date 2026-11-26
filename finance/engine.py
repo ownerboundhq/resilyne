@@ -108,7 +108,7 @@ def claim(root,at):
           WHERE state='running' AND lease_until<=?""",(MAX_ATTEMPTS,at,now(),at))
         rows=db.execute("SELECT * FROM engine_jobs WHERE active=1 ORDER BY rowid").fetchall()
         # Single active execution across the workspace.
-        if any(r["state"]=="running" for r in rows): return None
+        if db.execute("SELECT 1 FROM engine_jobs WHERE state='running' LIMIT 1").fetchone(): return None
         states={r["id"]:r["state"] for r in rows}
         for r in rows:
             if r["state"] not in ("queued","retry") or r["next_due"]>at: continue
@@ -208,6 +208,10 @@ def run_tool(root,job,today,browser):
         check(row and row["state"]=="complete","Saved browser batch unavailable")
         bank,ledger=parse(row["bank"]),parse(row["ledger"])
         result,findings=reconcile(bank,ledger)
+        check(key==digest(hashlib.sha256(row["bank"]).digest()+hashlib.sha256(row["ledger"]).digest()),"Browser source fingerprint mismatch")
+        expected_bank={("PAY-001","2026-11-24",12000),("FEE-001","2026-11-24",-300),("BILL-001","2026-11-24",-5000)}
+        expected_ledger={("PAY-001","2026-11-24",12000),("FEE-001","2026-11-24",-300),("BILL-001","2026-11-24",-5500)}
+        check(len(bank)==len(ledger)==3 and {(r["reference"],r["date"],r["cents"]) for r in bank}==expected_bank and {(r["reference"],r["date"],r["cents"]) for r in ledger}==expected_ledger,"Browser exports differ from authorized fixture")
         check(result==json.loads(row["report"]),"Saved reconciliation mismatch")
         check(len(findings)==1 and findings[0][:2]==("date_or_amount_mismatch","BILL-001"),"Unexpected remaining browser discrepancies")
         fee=[x for x in ledger if x["reference"]=="FEE-001"]

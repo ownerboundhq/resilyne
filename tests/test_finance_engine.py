@@ -66,3 +66,16 @@ class EngineTests(unittest.TestCase):
             verify_close(r)
             r["income_statement"]["revenue_cents"]+=1
             with self.assertRaises(ValueError): verify_close(r)
+
+    def test_replanning_does_not_overlap_old_running_job(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);plan(root,TODAY)
+            first=claim(root,1000)
+            p=root/"office.json"
+            p.write_bytes(p.read_bytes()+b" ")
+            plan(root,TODAY)
+            self.assertIsNone(claim(root,1001))
+            self.assertTrue(finish(root,first,"blocked",error="changed source",at=1002))
+            second=claim(root,1003)
+            self.assertIsNotNone(second)
+            self.assertNotEqual(first["id"],second["id"])
