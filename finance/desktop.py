@@ -15,8 +15,8 @@ class Desktop:
         self.port=8766
         self.worker=None
         self.pilot=None
-        window.title("Neuravale Finance Desktop 0.6.0 | local pilot")
-        window.geometry("780x780")
+        window.title("Neuravale Finance Desktop 0.7.0 | local pilot")
+        window.geometry("780x820")
         window.minsize(600,620)
         frame=ttk.Frame(window,padding=24)
         frame.pack(fill="both",expand=True)
@@ -40,12 +40,16 @@ class Desktop:
         ttk.Button(frame,text="Generate report in installed Excel",command=self.excel_export).pack(fill="x",pady=3)
         ttk.Button(frame,text="Prepare full specialist month-end close",command=self.prepare_close).pack(fill="x",pady=3)
         ttk.Button(frame,text="Review and seal month-end snapshot",command=self.seal_close).pack(fill="x",pady=3)
+        ttk.Button(frame,text="Connect your software (test integrations)",command=self.integrations).pack(fill="x",pady=3)
         ttk.Button(frame,text="Open activity dashboard",command=lambda:webbrowser.open(f"http://127.0.0.1:{self.port}/")).pack(fill="x",pady=3)
         ttk.Button(frame,text="Open local workspace",command=self.open_workspace).pack(fill="x",pady=3)
         ttk.Label(frame,textvariable=self.detail,wraplength=610).pack(anchor="w",pady=12)
-        ttk.Label(frame,text="No live accounts, credentials, payments, or tax filing. Closing this window stops its worker. Keep the computer awake.",wraplength=610).pack(anchor="w")
+        ttk.Label(frame,text="Test-only connections. No payments or tax filing. Closing this window stops its worker. Keep the computer awake.",wraplength=610).pack(anchor="w")
         window.protocol("WM_DELETE_WINDOW",self.close)
         self.refresh()
+    def integrations(self):
+        from .integration_ui import open_integrations
+        open_integrations(self.window)
     def spawn(self, module, args, log_name):
         flags=getattr(subprocess,"CREATE_NO_WINDOW",0)
         with (self.workspace/log_name).open("ab") as log:

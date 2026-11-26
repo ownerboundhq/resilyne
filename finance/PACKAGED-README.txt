@@ -1,4 +1,4 @@
-NEURAVALE FINANCE DESKTOP 0.6.0 - Windows x64 preview
+NEURAVALE FINANCE DESKTOP 0.7.0 - Windows x64 preview
 
 1. Extract ALL files from the ZIP to a folder.
 2. Double-click NeuravaleFinance.exe. Keep the other folders beside it.
@@ -25,3 +25,5 @@ No third-party AI API is required. The browser fixture is local.
 MONTH END: Click Prepare full specialist month-end close. Open dashboard, review the checks and statements. Click Review and seal month-end snapshot only after review. This only seals a local fictional snapshot; no live books are closed.
 
 The full specialist demo calculates FIFO COGS, reconciles payroll and GST/HST, and produces four balanced local adjusting entries (COGS, accrual, prepaid amortization, depreciation). It does not compute statutory payroll deductions, determine actual GST/HST eligibility, file tax returns, or post to external applications.
+
+INTEGRATIONS: click Connect your software (test integrations). Four session-only API sample readers are implemented; test credentials required. Other catalog items remain planned. No automatic posting or ongoing API sync.
