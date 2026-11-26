@@ -15,9 +15,9 @@ class Desktop:
         self.port=8766
         self.worker=None
         self.pilot=None
-        window.title("Neuravale Finance Desktop 0.3.1 | local pilot")
-        window.geometry("760x650")
-        window.minsize(600,540)
+        window.title("Neuravale Finance Desktop 0.4.0 | local pilot")
+        window.geometry("780x720")
+        window.minsize(600,620)
         frame=ttk.Frame(window,padding=24)
         frame.pack(fill="both",expand=True)
         ttk.Label(frame,text="neuravale. finance",font=("Segoe UI",24,"bold")).pack(anchor="w")
@@ -29,6 +29,8 @@ class Desktop:
         self.auto=tk.BooleanVar(value=False)
         ttk.Checkbutton(frame,text="Schedule fictional browser export every 5 minutes (headless)",variable=self.auto).pack(anchor="w")
         ttk.Button(frame,text="Create fictional financial office data",command=self.seed_office).pack(fill="x",pady=3)
+        self.watch_btn=ttk.Button(frame,text="Start team and watch accounting workflow",command=self.watch_team)
+        self.watch_btn.pack(fill="x",pady=5)
         self.start_btn=ttk.Button(frame,text="Start local accounting worker",command=self.start)
         self.start_btn.pack(fill="x",pady=3)
         self.stop_btn=ttk.Button(frame,text="Stop worker",command=self.stop)
@@ -60,6 +62,16 @@ class Desktop:
     def stop(self):
         if self.running(self.worker):
             self.worker.terminate()
+    def watch_team(self):
+        if self.running(self.pilot): return
+        self.seed_office()
+        self.start()
+        if not self.running(self.worker): return
+        try:
+            self.pilot=self.spawn("finance.operation",["--workspace",str(self.workspace)],"operation.log")
+            self.detail.set("Watch the team open a practice ledger, reconcile, enter an allowed adjustment and verify it.")
+        except OSError as exc:
+            messagebox.showerror("Cannot start practice operation",str(exc))
     def run_pilot(self):
         if self.running(self.pilot): return
         try:
@@ -104,9 +116,10 @@ class Desktop:
         self.start_btn.configure(state="disabled" if working else "normal")
         self.stop_btn.configure(state="normal" if working else "disabled")
         self.run_btn.configure(state="disabled" if busy else "normal")
+        self.watch_btn.configure(state="disabled" if busy else "normal")
         if self.pilot is not None and not busy:
             code=self.pilot.returncode
-            self.detail.set("Local task finished. Check dashboard or workspace/reports." if code==0 else f"Local task failed ({code}); see browser.log or excel.log.")
+            self.detail.set("Local task finished. Check dashboard or workspace/reports." if code==0 else f"Local task failed ({code}); see operation.log, browser.log or excel.log.")
         self.window.after(1000,self.refresh)
     def close(self):
         if self.running(self.pilot):

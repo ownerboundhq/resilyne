@@ -14,6 +14,9 @@ def main():
         elif mode=="--browser":
             from finance.browser_pilot import main as browser_main
             browser_main()
+        elif mode=="--operation":
+            from finance.operation import main as operation_main
+            operation_main()
         elif mode=="--office":
             import argparse
             import json

@@ -1,12 +1,12 @@
-NEURAVALE FINANCE DESKTOP 0.3.1 - Windows x64 preview
+NEURAVALE FINANCE DESKTOP 0.4.0 - Windows x64 preview
 
 1. Extract ALL files from the ZIP to a folder.
 2. Double-click NeuravaleFinance.exe. Keep the other folders beside it.
-3. Click Create fictional financial office data.
-4. Optionally check Schedule fictional browser export every 5 minutes.
-5. Click Start local accounting worker.
-6. Click Run visible browser export pilot to see Chromium open and click export buttons.
-7. Click Open activity dashboard to view actual results.
+3. Click Start team and watch accounting workflow.
+4. Watch Chromium navigate the fictional ledger, download records, post a permitted CAD 3 bank fee, and verify the result.
+5. Click Open activity dashboard to see the remaining discrepancy and report.
+6. Open local workspace/operations to inspect screenshots and source evidence.
+7. Optional: enable scheduled read-only browser exports before starting the worker.
 
 Python, Git and a separate browser installation are not required.
 An optional Excel report requires desktop Microsoft Excel and permission to run its PowerShell script.
