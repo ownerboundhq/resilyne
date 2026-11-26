@@ -17,7 +17,7 @@ class AutonomyTests(unittest.TestCase):
             self.assertEqual(first["month_end"]["state"],"completed")
             self.assertEqual(first["browser"]["state"],"needs_review")
             self.assertEqual(month_end.latest(root)[0]["state"],"sealed")
-            files=list((root/"reports").glob("*.json"))
+            files=list((root/"reports").glob("autonomous-close-*.json"))
             self.assertEqual(len(files),1)
             old=files[0].read_bytes()
             tick(root,today,browser,1001)
