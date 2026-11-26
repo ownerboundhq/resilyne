@@ -1,4 +1,4 @@
-NEURAVALE FINANCE DESKTOP 0.12.0 - Windows x64 preview
+NEURAVALE FINANCE DESKTOP 0.12.1 - Windows x64 preview
 
 1. Extract ALL files from the ZIP to a folder.
 2. Double-click NeuravaleFinance.exe. Keep the other folders beside it.

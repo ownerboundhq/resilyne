@@ -15,7 +15,7 @@ class Desktop:
         self.port=8766
         self.worker=None
         self.pilot=None
-        window.title("Neuravale Finance Desktop 0.12.0 | local pilot")
+        window.title("Neuravale Finance Desktop 0.12.1 | local pilot")
         window.geometry("780x690")
         window.minsize(600,560)
         frame=ttk.Frame(window,padding=24)
