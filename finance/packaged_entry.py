@@ -23,6 +23,9 @@ def main():
         elif mode=="--intelligence":
             from finance.intelligence import main as intelligence_main
             intelligence_main()
+        elif mode=="--engine":
+            from finance.engine import main as engine_main
+            engine_main()
         elif mode=="--autonomy":
             from finance.autonomy import main as autonomy_main
             autonomy_main()

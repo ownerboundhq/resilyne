@@ -212,7 +212,8 @@ def snapshot(root):
     from .office import latest
     from .month_end import latest as close_latest
     from .autonomy import status as autonomy_status
-    return {"autonomy":autonomy_status(root),"month_end":close_latest(root),"office":latest(root),"roles":ROLES,"counts":counts,"last_cycle":heartbeat[0] if heartbeat else None,
+    from .engine import snapshot as engine_snapshot
+    return {"engine":engine_snapshot(root),"autonomy":autonomy_status(root),"month_end":close_latest(root),"office":latest(root),"roles":ROLES,"counts":counts,"last_cycle":heartbeat[0] if heartbeat else None,
             "batches":batches,"findings":findings,"activity":activity}
 
 def demo(root):
@@ -238,8 +239,8 @@ def serve(root, port, interval, browser_demo=False, autonomous_demo=False):
             try:
                 cycle(root)
                 if autonomous_demo and not stop.is_set():
-                    from .autonomy import tick as autonomy_tick
-                    autonomy_tick(root)
+                    from .engine import tick as engine_tick
+                    engine_tick(root)
                 elif browser_demo and not stop.is_set():
                     from .schedule import browser_tick
                     browser_tick(root)

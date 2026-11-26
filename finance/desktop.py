@@ -15,7 +15,7 @@ class Desktop:
         self.port=8766
         self.worker=None
         self.pilot=None
-        window.title("Neuravale Finance Desktop 0.11.0 | local pilot")
+        window.title("Neuravale Finance Desktop 0.12.0 | local pilot")
         window.geometry("780x690")
         window.minsize(600,560)
         frame=ttk.Frame(window,padding=24)
@@ -34,7 +34,7 @@ class Desktop:
         ttk.Label(home,text="Start your fictional accounting department.",font=("Segoe UI",13,"bold")).pack(anchor="w")
         self.start_btn=ttk.Button(home,text="Start accounting team",command=self.start_office)
         self.start_btn.pack(fill="x",pady=4)
-        self.autonomy_btn=ttk.Button(home,text="Start autonomous practice team",command=self.start_autonomous)
+        self.autonomy_btn=ttk.Button(home,text="Start Intelligence Engine",command=self.start_autonomous)
         self.autonomy_btn.pack(fill="x",pady=4)
         self.stop_btn=ttk.Button(home,text="Stop background worker",command=self.stop)
         self.stop_btn.pack(fill="x",pady=4)
@@ -86,10 +86,10 @@ class Desktop:
     def start_autonomous(self):
         if self.running(self.worker):
             messagebox.showinfo("Worker running","Stop the current worker before changing mode.");return
-        if not messagebox.askyesno("Authorize fictional autonomy","Run the isolated practice browser daily, prepare extended accounting reports and automatically seal the exact fictional monthly fixture? No real accounts, payments, tax filing or physical mouse control. The worker runs while this window and computer remain active."):
+        if not messagebox.askyesno("Authorize fictional autonomy","Authorize the Intelligence Engine to assign and execute fictional accounting tasks, verify results and seal the exact approved fictional monthly fixture? No real accounts, payments, tax filing or physical mouse control. The worker runs while this window and computer remain active."):
             return
         self.start(autonomous=True)
-        self.detail.set("Autonomous practice team authorized. Open reports to see progress and exceptions.")
+        self.detail.set("Intelligence Engine authorized. Open reports to see the live task centre, assigned roles and verification results.")
     def start(self,autonomous=False):
         if self.running(self.worker): return
         try:
