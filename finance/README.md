@@ -1,4 +1,4 @@
-# Neuravale Finance — local pilot 0.1
+# Neuravale Finance — desktop pilot 0.2
 
 Mission: a continuously operating accounting team for small and medium businesses.
 This release implements an autonomous, deterministic reconciliation worker and an exception-review queue. It does not run the Neuravale language model, operate other applications, connect to real accounts, post entries, make payments, or file taxes.
@@ -35,3 +35,13 @@ Acknowledgement records a reason; it does not correct a ledger or certify an exc
 7. Model: benchmark the original Neuravale model for constrained tool selection against simpler rules and other baselines. It must not generate financial figures or authorize transactions.
 
 No third-party AI API is used by this pilot.
+
+## Windows desktop and visible computer-use pilot (0.2)
+
+From the repository root, run:
+
+    .\.venv\Scripts\python.exe -m pip install -r finance/requirements-desktop.txt
+    .\.venv\Scripts\python.exe -m playwright install chromium
+    .\.venv\Scripts\python.exe -m finance.desktop
+
+The native Tkinter launcher starts/stops the background reconciliation process, opens the dashboard on port 8766, and launches a separate visible Chromium browser on the same computer. Press **Start local accounting worker**, then **Run visible browser export pilot**, then **Open activity dashboard**. The pilot clicks export buttons in the bundled fictional accounting web application, saves the CSV downloads locally, validates them and queues/reconciles the data. It is a fixed, allowlisted workflow, not general AI or arbitrary desktop control. No live credentials or external accounting sites are used. Chromium installation needs internet; the pilot itself does not. Expected: one exact match, two exceptions, CAD $2.00 net-movement difference. Repeated identical exports produce one reconciliation batch. Logs and data are outside the repository in the Neuravale-finance-desktop-demo folder. The worker stops when the launcher is closed; it needs a powered-on, awake computer. No actual Windows UI/third-party software automation, installer, autostart service, or unrestricted mouse control is implemented. The original language model is not used yet. Do not use real financial records.
