@@ -10,12 +10,12 @@ from .runtime import command
 class Desktop:
     def __init__(self, window):
         self.window=window
-        self.workspace=Path.home()/"Neuravale-finance-desktop-demo-v06"
+        self.workspace=Path.home()/"Neuravale-finance-desktop-demo-v010"
         self.workspace.mkdir(parents=True,exist_ok=True)
         self.port=8766
         self.worker=None
         self.pilot=None
-        window.title("Neuravale Finance Desktop 0.9.0 | local pilot")
+        window.title("Neuravale Finance Desktop 0.10.0 | local pilot")
         window.geometry("780x690")
         window.minsize(600,560)
         frame=ttk.Frame(window,padding=24)
@@ -34,6 +34,8 @@ class Desktop:
         ttk.Label(home,text="Start your fictional accounting department.",font=("Segoe UI",13,"bold")).pack(anchor="w")
         self.start_btn=ttk.Button(home,text="Start accounting team",command=self.start_office)
         self.start_btn.pack(fill="x",pady=4)
+        self.autonomy_btn=ttk.Button(home,text="Start autonomous practice team",command=self.start_autonomous)
+        self.autonomy_btn.pack(fill="x",pady=4)
         self.stop_btn=ttk.Button(home,text="Stop background worker",command=self.stop)
         self.stop_btn.pack(fill="x",pady=4)
         ttk.Button(home,text="Open activity and financial reports",command=self.open_dashboard).pack(fill="x",pady=4)
@@ -80,11 +82,19 @@ class Desktop:
     @staticmethod
     def running(proc):
         return proc is not None and proc.poll() is None
-    def start(self):
+    def start_autonomous(self):
+        if self.running(self.worker):
+            messagebox.showinfo("Worker running","Stop the current worker before changing mode.");return
+        if not messagebox.askyesno("Authorize fictional autonomy","Run the isolated practice browser daily and automatically seal the exact fictional monthly fixture? No real accounts, payments, tax filing or physical mouse control. The worker runs while this window and computer remain active."):
+            return
+        self.start(autonomous=True)
+        self.detail.set("Autonomous practice team authorized. Open reports to see progress and exceptions.")
+    def start(self,autonomous=False):
         if self.running(self.worker): return
         try:
             args=["--workspace",str(self.workspace),"serve","--port",str(self.port)]
-            if self.auto.get(): args.append("--browser-demo")
+            if autonomous: args.append("--autonomous-demo")
+            elif self.auto.get(): args.append("--browser-demo")
             self.worker=self.spawn("finance.worker",args,"worker.log")
         except OSError as exc:
             messagebox.showerror("Cannot start worker",str(exc))
@@ -181,6 +191,7 @@ class Desktop:
         busy=self.running(self.pilot)
         self.state.set("Worker process running · verify heartbeat in dashboard" if working else ("Worker stopped" if self.worker is None else f"Worker exited ({self.worker.returncode}); see worker.log"))
         self.start_btn.configure(state="disabled" if working else "normal")
+        self.autonomy_btn.configure(state="disabled" if working else "normal")
         self.stop_btn.configure(state="normal" if working else "disabled")
         self.run_btn.configure(state="disabled" if busy else "normal")
         self.watch_btn.configure(state="disabled" if busy else "normal")

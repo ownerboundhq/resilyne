@@ -211,7 +211,8 @@ def snapshot(root):
         f["evidence"] = json.loads(f["evidence"])
     from .office import latest
     from .month_end import latest as close_latest
-    return {"month_end":close_latest(root),"office":latest(root),"roles":ROLES,"counts":counts,"last_cycle":heartbeat[0] if heartbeat else None,
+    from .autonomy import status as autonomy_status
+    return {"autonomy":autonomy_status(root),"month_end":close_latest(root),"office":latest(root),"roles":ROLES,"counts":counts,"last_cycle":heartbeat[0] if heartbeat else None,
             "batches":batches,"findings":findings,"activity":activity}
 
 def demo(root):
@@ -228,7 +229,7 @@ def demo(root):
     (folder/"READY").touch()
     return folder
 
-def serve(root, port, interval, browser_demo=False):
+def serve(root, port, interval, browser_demo=False, autonomous_demo=False):
     if interval<5:
         raise ValueError("Minimum interval is five seconds")
     stop = threading.Event()
@@ -236,7 +237,10 @@ def serve(root, port, interval, browser_demo=False):
         while not stop.is_set():
             try:
                 cycle(root)
-                if browser_demo and not stop.is_set():
+                if autonomous_demo and not stop.is_set():
+                    from .autonomy import tick as autonomy_tick
+                    autonomy_tick(root)
+                elif browser_demo and not stop.is_set():
                     from .schedule import browser_tick
                     browser_tick(root)
             except Exception as exc:
@@ -292,6 +296,7 @@ def main():
     s.add_argument("--port",type=int,default=8765)
     s.add_argument("--interval",type=int,default=30)
     s.add_argument("--browser-demo",action="store_true",help="Opt in to scheduled fictional browser exports")
+    s.add_argument("--autonomous-demo",action="store_true",help="Run authorized autonomous fictional office")
     ack=sub.add_parser("ack")
     ack.add_argument("id",type=int)
     ack.add_argument("--reason",required=True)
@@ -308,7 +313,7 @@ def main():
         acknowledge(root,a.id,a.reason)
         print("Acknowledged; no financial records changed.")
     else:
-        serve(root,a.port,a.interval,a.browser_demo)
+        serve(root,a.port,a.interval,a.browser_demo,a.autonomous_demo)
 
 if __name__=="__main__":
     main()

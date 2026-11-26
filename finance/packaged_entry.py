@@ -20,6 +20,9 @@ def main():
         elif mode=="--computer-use":
             from finance.computer_use import main as computer_main
             computer_main()
+        elif mode=="--autonomy":
+            from finance.autonomy import main as autonomy_main
+            autonomy_main()
         elif mode=="--month-end":
             from finance.month_end import main as month_main
             month_main()

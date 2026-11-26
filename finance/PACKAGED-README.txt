@@ -1,4 +1,4 @@
-NEURAVALE FINANCE DESKTOP 0.9.0 - Windows x64 preview
+NEURAVALE FINANCE DESKTOP 0.10.0 - Windows x64 preview
 
 1. Extract ALL files from the ZIP to a folder.
 2. Double-click NeuravaleFinance.exe. Keep the other folders beside it.
@@ -13,7 +13,7 @@ An optional Excel report requires desktop Microsoft Excel and permission to run 
 The app is unsigned; Windows may warn you. Verify the published SHA-256 before running.
 No automatic startup task is installed by this portable package. Closing the launcher stops its worker.
 Keep the computer awake. The package does not modify your existing AI training software.
-Data and logs: %USERPROFILE%\Neuravale-finance-desktop-demo-v06
+Data and logs: %USERPROFILE%\Neuravale-finance-desktop-demo-v010
 Uninstall by stopping the worker, closing the launcher and deleting the extracted app folder.
 Local workspace data remains unless you explicitly delete it.
 
@@ -31,3 +31,5 @@ INTEGRATIONS: click Connect your software (test integrations). Four session-only
 PHYSICAL COMPUTER USE: click Watch physical mouse and keyboard accounting. Start and approve inside the practice window. Watch the real mouse enter the four calculated journals. Escape, moving the mouse or switching windows stops. Keep the window fully visible on the primary monitor. Restricted fictional fixture only; no arbitrary application control. Physical interactive behavior must be tested on your laptop.
 
 V0.9: Open the Office tab and Start accounting team. It seeds daily office and specialist month-end practice records and starts the worker. Review the reports. On Computer use, choose Watch physical mouse and keyboard accounting BEFORE sealing the month; the native operator uses the current unsealed specialist plan and rejects changed or sealed sources. Approve the practice-window input before it starts. The desktop has three tabs (Office, Computer use, Connections). No production data or live accounting writes.
+
+AUTONOMOUS MODE: click Start autonomous practice team and authorize once. Daily reports, scheduled isolated browser correction and exact fictional month-end close run without further prompts while the launcher is open and PC awake. Unresolved discrepancies remain flagged. This mode never controls your real mouse or live accounts.
