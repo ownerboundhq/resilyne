@@ -54,3 +54,6 @@ Chat and Research expose CPU/WebAssembly profiles even without WebGPU. N1 Lite u
 
 ## Original model research: N0 Chat 003
 See [research/n0_chat](research/n0_chat) for the from-scratch dialogue model training source, local demo and measured run summary. The exact original checkpoint is not yet uploaded. The public chat still uses third-party models; N0 Chat 003 is a narrow research prototype.
+
+## Neuravale Finance (local pilot)
+A continuous reconciliation worker with a durable local queue, exception evidence and read-only dashboard. See [Finance setup and release gates](finance/README.md). This is a deterministic local pilot, not a live accounting or tax filing service.
