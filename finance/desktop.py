@@ -15,8 +15,8 @@ class Desktop:
         self.worker=None
         self.pilot=None
         window.title("Neuravale Finance Desktop | local pilot")
-        window.geometry("700x480")
-        window.minsize(540,440)
+        window.geometry("760x600")
+        window.minsize(600,540)
         frame=ttk.Frame(window,padding=24)
         frame.pack(fill="both",expand=True)
         ttk.Label(frame,text="neuravale. finance",font=("Segoe UI",24,"bold")).pack(anchor="w")
@@ -25,6 +25,9 @@ class Desktop:
         self.state=tk.StringVar(value="Worker stopped")
         self.detail=tk.StringVar(value="Browser pilot has not run.")
         ttk.Label(frame,textvariable=self.state).pack(anchor="w",pady=(16,4))
+        self.auto=tk.BooleanVar(value=False)
+        ttk.Checkbutton(frame,text="Schedule fictional browser export every 5 minutes (headless)",variable=self.auto).pack(anchor="w")
+        ttk.Button(frame,text="Create fictional financial office data",command=self.seed_office).pack(fill="x",pady=3)
         self.start_btn=ttk.Button(frame,text="Start local accounting worker",command=self.start)
         self.start_btn.pack(fill="x",pady=3)
         self.stop_btn=ttk.Button(frame,text="Stop worker",command=self.stop)
@@ -47,7 +50,9 @@ class Desktop:
     def start(self):
         if self.running(self.worker): return
         try:
-            self.worker=self.spawn("finance.worker",["--workspace",str(self.workspace),"serve","--port",str(self.port)],"worker.log")
+            args=["--workspace",str(self.workspace),"serve","--port",str(self.port)]
+            if self.auto.get(): args.append("--browser-demo")
+            self.worker=self.spawn("finance.worker",args,"worker.log")
         except OSError as exc:
             messagebox.showerror("Cannot start worker",str(exc))
     def stop(self):
@@ -60,6 +65,15 @@ class Desktop:
             self.detail.set("Browser task started; look for the separate Chromium window.")
         except OSError as exc:
             messagebox.showerror("Cannot start browser task",str(exc))
+    def seed_office(self):
+        from .office import demo
+        try:
+            demo(self.workspace)
+            self.detail.set('Fictional office data created; worker will process it automatically.')
+        except FileExistsError:
+            self.detail.set('Office snapshot already exists; not overwritten.')
+        except OSError as exc:
+            messagebox.showerror('Cannot create sample',str(exc))
     def open_workspace(self):
         if sys.platform=="win32":
             import os

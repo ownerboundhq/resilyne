@@ -1,5 +1,6 @@
 """Single-user, local, read-only accounting reconciliation pilot."""
 import argparse
+from contextlib import closing
 import csv
 import hashlib
 import html
@@ -17,13 +18,13 @@ from pathlib import Path
 ROLES = {
     "Bookkeeper": "Implemented: exact-reference reconciliation (CAD CSV)",
     "Controller": "Implemented: exception queue and evidence review",
-    "Accountant": "Planned: ledger and financial statements",
-    "Tax specialist": "Planned: GST/HST and T2 preparation / authorized filing",
-    "AR specialist": "Planned: receivables",
-    "AP specialist": "Planned: payables",
+    "Accountant": "Implemented pilot: balanced journal and trial balance",
+    "Tax specialist": "Implemented pilot: supplied deadline monitoring; returns planned",
+    "AR specialist": "Implemented pilot: open receivable aging",
+    "AP specialist": "Implemented pilot: open payable aging",
     "Payroll specialist": "Planned: payroll",
-    "Audit specialist": "Planned: evidence testing; not professional assurance",
-    "Treasury specialist": "Planned: cash management",
+    "Audit specialist": "Implemented pilot: journal balance and input fingerprint; not assurance",
+    "Treasury specialist": "Implemented pilot: 30-day scheduled cash projection",
 }
 FIELDS = ["reference", "date", "amount"]
 MAX_BYTES = 5_000_000
@@ -124,7 +125,7 @@ def submit(root, folder):
     b, l = (read_limited(folder / x) for x in ("bank.csv","ledger.csv"))
     # Include boundaries, so different input pairs cannot hash to the same concatenation.
     key = hashlib.sha256(hashlib.sha256(b).digest()+hashlib.sha256(l).digest()).hexdigest()
-    with connect(root) as db:
+    with closing(connect(root)) as db, db:
         cur = db.execute("INSERT OR IGNORE INTO batches(id,name,created,state,bank,ledger) VALUES(?,?,?,'queued',?,?)",
                          (key,folder.name,now(),b,l))
         if cur.rowcount:
@@ -166,20 +167,22 @@ def cycle(root):
                 submit(root,folder)
             except (OSError,ValueError) as exc:
                 # Avoid a new activity row on each poll for the same broken input.
-                with connect(root) as db:
+                with closing(connect(root)) as db, db:
                     detail = f"{folder.name}: {exc}"
                     if not db.execute("SELECT 1 FROM activity WHERE event='input_error' AND detail=?",(detail,)).fetchone():
                         event(db,"input_error",None,detail)
     while process_one(root):
         pass
-    with connect(root) as db:
+    from .office import tick as office_tick
+    office_tick(root)
+    with closing(connect(root)) as db, db:
         db.execute("INSERT OR REPLACE INTO runtime VALUES('last_cycle',?)",(now(),))
 
 def acknowledge(root, finding_id, reason):
     reason = reason.strip()
     if not reason or len(reason)>1000:
         raise ValueError("Provide a review reason of 1–1000 characters")
-    with connect(root) as db:
+    with closing(connect(root)) as db, db:
         db.execute("BEGIN IMMEDIATE")
         row = db.execute("SELECT batch_id,reviewed FROM findings WHERE id=?",(finding_id,)).fetchone()
         if not row or row["reviewed"]:
@@ -188,7 +191,7 @@ def acknowledge(root, finding_id, reason):
         event(db,"acknowledged",row["batch_id"],f"Finding {finding_id}: {reason}; no ledger change")
 
 def snapshot(root):
-    with connect(root) as db:
+    with closing(connect(root)) as db, db:
         batches = [dict(r) for r in db.execute("SELECT id,name,created,state,report,error FROM batches ORDER BY created DESC,id LIMIT 100")]
         findings = [dict(r) for r in db.execute("SELECT * FROM findings ORDER BY id DESC LIMIT 500")]
         activity = [dict(r) for r in db.execute("SELECT * FROM activity ORDER BY id DESC LIMIT 100")]
@@ -198,7 +201,8 @@ def snapshot(root):
         b["report"] = json.loads(b["report"]) if b["report"] else None
     for f in findings:
         f["evidence"] = json.loads(f["evidence"])
-    return {"roles":ROLES,"counts":counts,"last_cycle":heartbeat[0] if heartbeat else None,
+    from .office import latest
+    return {"office":latest(root),"roles":ROLES,"counts":counts,"last_cycle":heartbeat[0] if heartbeat else None,
             "batches":batches,"findings":findings,"activity":activity}
 
 def demo(root):
@@ -215,7 +219,7 @@ def demo(root):
     (folder/"READY").touch()
     return folder
 
-def serve(root, port, interval):
+def serve(root, port, interval, browser_demo=False):
     if interval<5:
         raise ValueError("Minimum interval is five seconds")
     stop = threading.Event()
@@ -223,10 +227,13 @@ def serve(root, port, interval):
         while not stop.is_set():
             try:
                 cycle(root)
+                if browser_demo and not stop.is_set():
+                    from .schedule import browser_tick
+                    browser_tick(root)
             except Exception as exc:
                 print("Worker error:",repr(exc),flush=True)
                 try:
-                    with connect(root) as db:
+                    with closing(connect(root)) as db, db:
                         event(db,"worker_error",None,str(exc))
                 except sqlite3.Error:
                     pass
@@ -275,6 +282,7 @@ def main():
     s=sub.add_parser("serve")
     s.add_argument("--port",type=int,default=8765)
     s.add_argument("--interval",type=int,default=30)
+    s.add_argument("--browser-demo",action="store_true",help="Opt in to scheduled fictional browser exports")
     ack=sub.add_parser("ack")
     ack.add_argument("id",type=int)
     ack.add_argument("--reason",required=True)
@@ -291,7 +299,7 @@ def main():
         acknowledge(root,a.id,a.reason)
         print("Acknowledged; no financial records changed.")
     else:
-        serve(root,a.port,a.interval)
+        serve(root,a.port,a.interval,a.browser_demo)
 
 if __name__=="__main__":
     main()
